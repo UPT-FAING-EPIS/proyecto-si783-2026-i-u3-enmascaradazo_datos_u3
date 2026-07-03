@@ -1,0 +1,19 @@
+{
+  "name": "enmask-mcp-server",
+  "version": "0.1.0",
+  "description": "Servidor MCP para exponer Enmask como herramientas de IA: conexiones, esquemas, previews y jobs.",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "bin": {
+    "enmask-mcp-server": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "smoke": "node src/index.js --smoke"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {}
+}

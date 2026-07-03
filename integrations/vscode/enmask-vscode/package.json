@@ -1,0 +1,124 @@
+{
+  "name": "enmask-vscode",
+  "displayName": "Enmask Assistant",
+  "description": "Operar Enmask desde VS Code: login, conexiones, esquemas, previews de enmascaramiento, jobs y dashboard.",
+  "version": "0.1.0",
+  "publisher": "enmask-lab",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:enmask.setBackendUrl",
+    "onCommand:enmask.login",
+    "onCommand:enmask.logout",
+    "onCommand:enmask.testBackend",
+    "onCommand:enmask.openDashboard",
+    "onCommand:enmask.listConnections",
+    "onCommand:enmask.inspectSchema",
+    "onCommand:enmask.previewMasking",
+    "onCommand:enmask.listJobs",
+    "onView:enmaskConnections",
+    "onView:enmaskJobs"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Enmask",
+      "properties": {
+        "enmask.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL del backend FastAPI de Enmask. Ejemplo: http://localhost:8000"
+        },
+        "enmask.frontendUrl": {
+          "type": "string",
+          "default": "http://localhost:5173",
+          "description": "URL del frontend de Enmask para abrir el dashboard web."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "enmask.setBackendUrl",
+        "title": "Enmask: Set Backend URL"
+      },
+      {
+        "command": "enmask.login",
+        "title": "Enmask: Login"
+      },
+      {
+        "command": "enmask.logout",
+        "title": "Enmask: Logout"
+      },
+      {
+        "command": "enmask.testBackend",
+        "title": "Enmask: Test Backend"
+      },
+      {
+        "command": "enmask.openDashboard",
+        "title": "Enmask: Open Dashboard"
+      },
+      {
+        "command": "enmask.listConnections",
+        "title": "Enmask: List Connections"
+      },
+      {
+        "command": "enmask.inspectSchema",
+        "title": "Enmask: Inspect Schema"
+      },
+      {
+        "command": "enmask.previewMasking",
+        "title": "Enmask: Preview Masking"
+      },
+      {
+        "command": "enmask.listJobs",
+        "title": "Enmask: List Jobs"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "enmask",
+          "title": "Enmask",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "enmask": [
+        {
+          "id": "enmaskConnections",
+          "name": "Connections"
+        },
+        {
+          "id": "enmaskJobs",
+          "name": "Jobs"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "enmask.listConnections",
+          "when": "view == enmaskConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "enmask.listJobs",
+          "when": "view == enmaskJobs",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.0.0"
+  }
+}
