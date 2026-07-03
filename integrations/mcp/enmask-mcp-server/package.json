@@ -8,12 +8,15 @@
     "enmask-mcp-server": "src/index.js"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "smoke": "node src/index.js --smoke"
+  "start": "node src/http.js",
+  "stdio": "node src/index.js",
+  "smoke": "node src/index.js --smoke"
   },
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }
