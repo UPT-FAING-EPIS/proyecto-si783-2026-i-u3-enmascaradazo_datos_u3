@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enmascaradazo - Documentación del Proyecto</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Markdown to HTML Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Mermaid Diagram Renderer -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <h2>Enmascaradazo</h2>
+                <p>Docs Hub</p>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-file="FD01-Informe-Factibilidad.md">
+                    <span class="icon">01</span> Informe de Factibilidad
+                </button>
+                <button class="nav-item" data-file="FD02-Informe-Vision.md">
+                    <span class="icon">02</span> Informe de Visión
+                </button>
+                <button class="nav-item" data-file="FD04-Informe-Arquitectura.md">
+                    <span class="icon">04</span> Informe de Arquitectura
+                </button>
+                <button class="nav-item" data-file="FD05-Informe-Proyecto-Final.md">
+                    <span class="icon">05</span> Informe Proyecto Final
+                </button>
+                <button class="nav-item" data-file="FD06-Propuesta-Proyecto.md">
+                    <span class="icon">06</span> Propuesta de Proyecto
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <p class="server-note">ℹ️ Para visualizar localmente requiere un Live Server activo.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <header class="topbar glass-panel">
+                <h1 id="current-doc-title">Cargando Documento...</h1>
+                <div class="actions">
+                    <button id="theme-toggle" class="icon-btn" title="Alternar Tema">
+                        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="markdown-body-container glass-panel">
+                <div id="content" class="markdown-body">
+                    <!-- Markdown content will be injected here -->
+                    <div class="loader-container">
+                        <div class="spinner"></div>
+                        <p>Renderizando documentación...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
