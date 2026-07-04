@@ -870,16 +870,20 @@ El flujo dinámico del proceso desde la autenticación hasta la ejecución de en
 ```plantuml
 @startuml
 skinparam Shadowing false
+
 start
 :Usuario inicia sesión en Frontend;
+
 if (¿Autenticación exitosa?) then (sí)
   :Dashboard cargado (resumen ejecutivo);
   :Registrar o seleccionar Conexión;
   :Probar conexión activa;
+
   if (¿Conexión exitosa?) then (sí)
     :Inspeccionar esquema (tablas/campos);
     :Mapear reglas de enmascaramiento por campo;
     :Previsualizar enmascaramiento al vuelo (Workbench/WorkbenchService);
+
     if (¿Confirmar ejecución?) then (sí)
       if (¿Modo de Ejecución?) then (DRY_RUN)
         :Ejecutar benchmark sin alterar la BD;
@@ -893,12 +897,15 @@ if (¿Autenticación exitosa?) then (sí)
     else (no)
       :Descartar cambios;
     endif
+
   else (no)
     :Mostrar error de conexión (diagnóstico de drivers/puertos/credenciales);
   endif
+
 else (no)
   :Mostrar error de login;
-fi
+endif
+
 stop
 @enduml
 ```
