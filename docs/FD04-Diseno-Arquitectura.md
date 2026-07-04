@@ -469,27 +469,31 @@ skinparam Shadowing false
 rectangle "Capa Presentación" {
   component "React UI\n(Browser)" as FE
 }
+
 rectangle "Capa API Gateway" {
   component "FastAPI App\n(main.py + Router)" as API
 }
+
 rectangle "Capa de Aplicación" {
   component "JobOrchestrator\n(job_orchestrator.py)" as S_Jobs
   component "MaskingService\n(masking_service.py)" as S_Masking
 }
+
 rectangle "Capa de Infraestructura" {
   component "DatabaseFactory\n(factory.py)" as Factory
   component "DB Clients\n(Postgres, Mongo, Neo4j, etc.)" as Clients
   component "Masking Strategies\n(strategies.py)" as Strats
 }
+
 database "Target DBs\n(MySQL, PostgreSQL,\nNeo4j, Cassandra, etc.)" as ExtDB
 
-FE --(01 HTTP/JSON)--> API : "1: Iniciar Job\n7: Retornar resultado"
-API --(02 Python Call)--> S_Jobs : "2: create_and_execute_job()"
-S_Jobs --(03 Factory Call)--> Factory : "3: get_client()"
-Factory --(04 Instantiate)--> Clients : "4: Crear conector"
-Clients --(05 Query)--> ExtDB : "5: Conectar y extraer registros"
-S_Jobs --(06 Python Call)--> S_Masking : "6: mask_value()"
-S_Masking --(07 Strategy Call)--> Strats : "7: mask()"
+FE --> API : 1: HTTP/JSON - Iniciar Job / Retornar resultado
+API --> S_Jobs : 2: create_and_execute_job()
+S_Jobs --> Factory : 3: get_client()
+Factory --> Clients : 4: Crear conector
+Clients --> ExtDB : 5: Conectar y extraer registros
+S_Jobs --> S_Masking : 6: mask_value()
+S_Masking --> Strats : 7: mask()
 @enduml
 ```
 
