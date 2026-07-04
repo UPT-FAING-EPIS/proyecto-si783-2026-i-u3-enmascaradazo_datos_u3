@@ -1,27 +1,31 @@
 # FD04 - Informe de Arquitectura
 
 ## Propósito (Modelo 4+1 Vistas)
-Este documento provee una visión general comprensiva de la arquitectura del **Motor de Enmascarado Multiformato (Enmascaradazo)**, utilizando el modelo 4+1 vistas (Lógica, Implementación, Procesos, Despliegue y Casos de Uso) para capturar las diferentes perspectivas del sistema.
+Este documento provee una visión general comprensiva de la arquitectura del **Motor de Enmascarado Multiformato (Enmask v2.0)**, utilizando el modelo 4+1 vistas (Lógica, Implementación, Procesos, Despliegue y Casos de Uso) de Philippe Kruchten para capturar las diferentes perspectivas del sistema.
 
 ## Alcance
-La arquitectura descrita abarca todos los módulos del motor de ofuscación de datos, la API backend, y el Dashboard frontend, así como sus interacciones con las bases de datos de origen y destino.
+La arquitectura descrita abarca todos los módulos del motor de ofuscación de datos, la API backend en FastAPI, y la aplicación de control en React+Vite, así como sus interacciones con las bases de datos de origen y destino.
 
 ## Definición, Siglas y Abreviaturas
 - **API:** Application Programming Interface.
 - **UI:** User Interface.
 - **DTO:** Data Transfer Object.
+- **DDD:** Domain-Driven Design.
+- **MCP:** Model Context Protocol.
 
 ## Organización del Documento
-El documento está organizado según las vistas de arquitectura, seguido de escenarios de calidad.
+El documento está organizado según las vistas de arquitectura, seguido de escenarios de calidad y roadmaps del proyecto.
 
 ## Requerimientos Funcionales
-- **RF1:** El sistema permitirá conectar a bases de datos SQL y NoSQL.
+- **RF1:** El sistema permitirá conectar a bases de datos SQL y NoSQL (9 motores soportados).
 - **RF2:** El sistema aplicará reglas de enmascaramiento configurables por columna/campo.
-- **RF3:** El sistema generará reportes de ejecución.
+- **RF3:** El sistema generará vistas previas y reportes de ejecución (Jobs) en modo Dry-Run o Apply.
+- **RF4:** El sistema contará con autenticación local y control de roles (administrador auditable).
 
 ## Requerimientos No Funcionales – Atributos de Calidad
-- **RNF1 (Seguridad):** Los datos extraídos no serán persistidos temporalmente en disco.
-- **RNF2 (Rendimiento):** Procesamiento de hasta 1 millón de registros por minuto.
+- **RNF1 (Seguridad):** Los datos extraídos no serán persistidos temporalmente de forma insegura; el enmascaramiento se realiza al vuelo y el cifrado simétrico guarda respaldos protegidos en un Vault local.
+- **RNF2 (Extensibilidad):** Añadir nuevos motores a través del patrón Factory sin alterar la lógica de Jobs del orquestador.
+- **RNF3 (Rendimiento):** Procesamiento eficiente asíncrono con FastAPI y consultas paginadas o por lotes (Batching).
 
 ---
 
@@ -29,16 +33,44 @@ El documento está organizado según las vistas de arquitectura, seguido de esce
 
 ### Diagramas de Casos de Uso
 
-```mermaid
-flowchart LR
-    A[Usuario QA] -->|Configura| B((Crear Tarea Enmascarado))
-    A -->|Visualiza| C((Ver Reportes))
-    B --> D((Conectar a Origen y Destino))
-    B --> E((Seleccionar Reglas de Desensibilización))
+```plantuml
+@startuml
+left to right direction
+skinparam roundcorner 8
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+skinparam UsecaseBackgroundColor #ECF0F1
+skinparam UsecaseBorderColor #2C3E50
+
+actor "Usuario QA / Dev" as User
+actor "Administrador" as Admin
+
+rectangle "Enmask v2.0" {
+  usecase "CU-001: Iniciar Sesión" as UC1
+  usecase "CU-002: Registrar Conexión" as UC2
+  usecase "CU-003: Inspeccionar Esquema (Workbench)" as UC3
+  usecase "CU-004: Previsualizar Enmascarado" as UC4
+  usecase "CU-005: Ejecutar Job (Dry-run / Apply)" as UC5
+  usecase "CU-006: Restaurar / Desencriptar" as UC6
+  usecase "CU-007: Auditar Reportes" as UC7
+  usecase "CU-008: Gestionar Roles" as UC8
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+
+Admin --|> User
+Admin --> UC8
+@enduml
 ```
 
 ### Descripción de Casos de Uso Principales:
-- **Crear Tarea Enmascarado:** El usuario especifica las credenciales, selecciona las tablas y aplica las reglas para ofuscar los datos.
+- **Ejecutar Job:** El usuario configura las reglas de protección por campo, y el orquestador ejecuta el enmascarado en modo *Dry-run* (simulación de muestra) o *Apply* (creación física de vistas, columnas duplicadas o reemplazo físico con encriptación reversada).
 
 ---
 
@@ -46,121 +78,209 @@ flowchart LR
 
 ### Diagrama de Subsistemas (Paquetes)
 
-```mermaid
-classDiagram
-    class Frontend_UI {
-        +Dashboard()
-        +Formularios()
-    }
-    class Backend_API {
-        +RutasREST()
-        +Auth()
-    }
-    class Motor_Enmascarado {
-        +Transformador()
-        +CatalogoReglas()
-    }
-    class Data_Access {
-        +ConectoresSQL()
-        +ConectoresNoSQL()
-    }
-    Frontend_UI --> Backend_API
-    Backend_API --> Motor_Enmascarado
-    Motor_Enmascarado --> Data_Access
+```plantuml
+@startuml
+skinparam Shadowing false
+skinparam PackageBorderColor #34495E
+skinparam PackageBackgroundColor #F2F4F4
+
+package "Presentación (React SPA)" {
+  [Pages & UI Components] as UI
+  [API Client] as Client
+  UI --> Client
+}
+
+package "Aplicación (FastAPI Monolith)" {
+  [Routers (API Endpoints)] as Routers
+  [Application Services] as Services
+  Client --> Routers : HTTP
+  Routers --> Services
+}
+
+package "Dominio (Modelo DDD)" {
+  [Entities & Interfaces] as Domain
+  Services --> Domain
+}
+
+package "Infraestructura" {
+  [DatabaseFactory & DB Clients] as DB
+  [Masking Strategies] as Mask
+  [Repositories (Memory/DB)] as Repo
+  
+  Services --> DB
+  Services --> Mask
+  Services --> Repo
+}
+@enduml
 ```
 
 ### Diagrama de Secuencia (Vista de Diseño)
 
-```mermaid
-sequenceDiagram
-    actor Usuario
-    participant UI as Frontend
-    participant API as Backend API
-    participant Motor as Core Enmascarado
-    participant DB_O as DB Origen
-    participant DB_D as DB Destino
-    
-    Usuario->>UI: Inicia tarea de enmascarado
-    UI->>API: POST /api/tasks
-    API->>Motor: ejecutar_enmascarado(config)
-    Motor->>DB_O: Extraer datos en Batch
-    DB_O-->>Motor: Retorna Batch
-    Motor->>Motor: Aplicar Transformaciones (En memoria)
-    Motor->>DB_D: Insertar Batch Ofuscado
-    DB_D-->>Motor: Confirmación
-    Motor-->>API: Estado = Completado
-    API-->>UI: Notificación Éxito
+```plantuml
+@startuml
+autonumber
+skinparam Shadowing false
+
+actor Usuario
+participant "React Frontend" as UI
+participant "FastAPI Backend" as API
+participant "JobOrchestrator" as Orch
+participant "DB Client" as DB
+database "Target DB" as TDB
+
+Usuario -> UI: Inicia tarea de enmascarado
+UI -> API: POST /api/v1/jobs/ (rules, mode)
+activate API
+API -> Orch: create_and_execute_job(conn_id, mode, rules)
+activate Orch
+Orch -> DB: fetch_records(table, limit)
+activate DB
+DB -> TDB: SELECT / Extract records
+TDB --> DB: Raw records
+DB --> Orch: Records list
+deactivate DB
+Orch -> Orch: Aplicar transformación (Strategies)
+alt mode == APPLY
+  Orch -> DB: apply_masking_changes(protected_records)
+  activate DB
+  DB -> TDB: ALTER TABLE / CREATE VIEW / UPDATE
+  TDB --> DB: OK
+  DB --> Orch: Success
+  deactivate DB
+end
+Orch --> API: JobResult (Completed)
+deactivate Orch
+API --> UI: HTTP 200 {job_id, status, records}
+deactivate API
+UI --> Usuario: Mostrar confirmación y métricas
+@enduml
 ```
 
 ### Diagrama de Colaboración (Vista de Diseño)
 
-```mermaid
-flowchart TD
-    1((UI)) -- "1: Enviar Petición" --> 2((API Controller))
-    2 -- "2: Iniciar Job" --> 3((Worker Motor))
-    3 -- "3: Obtener Schema" --> 4((DB Connector))
-    4 -- "4: Leer/Escribir Datos" --> 5[(Databases)]
+```plantuml
+@startuml
+skinparam componentStyle uml2
+skinparam Shadowing false
+left to right direction
+
+component "React UI" as FE
+component "FastAPI Controller" as API
+component "JobOrchestrator" as Orch
+component "DatabaseFactory" as Fact
+component "Clients" as Cls
+component "MaskingService" as Mask
+
+FE --> API : "1: Iniciar Tarea"
+API --> Orch : "2: Orquestar Job"
+Orch --> Fact : "3: Solicitar Conector"
+Fact --> Cls : "4: Crear Instancia"
+Orch --> Mask : "5: Procesar Enmascarado"
+@enduml
 ```
 
 ### Diagrama de Objetos
 
-```mermaid
-classDiagram
-    object Tarea1 {
-        id = "TASK-001"
-        estado = "En progreso"
-        motor = "PostgreSQL"
-    }
-    object Regla1 {
-        tipo = "FakerName"
-        columna = "nombres"
-    }
-    Tarea1 -- Regla1 : contiene
+```plantuml
+@startuml
+skinparam Shadowing false
+
+object "conn1: Connection" as conn {
+  id = "conn-001"
+  database_type = "postgres"
+  host = "localhost"
+}
+
+object "job1: MaskingJob" as job {
+  id = "job-001"
+  run_mode = "APPLY"
+  status = "COMPLETED"
+}
+
+object "rule1: MaskingRule" as rule {
+  target_column = "dni"
+  algorithm = "hashing"
+  protection_mode = "static_mask"
+}
+
+job ..> conn : runs on
+rule ..> conn : associated to
+job "1" *-- "*" rule : executes
+@enduml
 ```
 
 ### Diagrama de Clases
 
-```mermaid
-classDiagram
-    class MaskingTask {
-        +String taskId
-        +String status
-        +execute()
-    }
-    class Rule {
-        +String targetField
-        +apply(data: String): String
-    }
-    class EmailRule {
-        +apply(data: String): String
-    }
-    Rule <|-- EmailRule
-    MaskingTask "1" *-- "*" Rule
+```plantuml
+@startuml
+skinparam classAttributeIconSize 0
+skinparam Shadowing false
+
+abstract class BaseDeDatos {
+  + connect()
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class PostgresClient extends BaseDeDatos {
+  + connect()
+}
+
+class MongoClient extends BaseDeDatos {
+  + connect()
+}
+
+class DatabaseFactory {
+  + {static} get_client(conn: Connection): BaseDeDatos
+}
+
+class JobOrchestrator {
+  + create_and_execute_job(conn_id: str, mode: str, rules: list): JobResult
+}
+
+DatabaseFactory ..> BaseDeDatos : instantiates
+JobOrchestrator --> DatabaseFactory : uses
+@enduml
 ```
 
 ### Diagrama de Base de Datos (Relacional o No Relacional)
 
-```mermaid
-erDiagram
-    USERS ||--o{ TASKS : creates
-    TASKS ||--o{ RULES : contains
-    USERS {
-        int id PK
-        string username
-        string password_hash
-    }
-    TASKS {
-        int id PK
-        int user_id FK
-        string status
-        datetime created_at
-    }
-    RULES {
-        int id PK
-        int task_id FK
-        string field_name
-        string mask_type
-    }
+```plantuml
+@startuml
+skinparam linetype ortho
+skinparam Shadowing false
+
+entity "User" as user {
+  * id : UUID <<PK>>
+  --
+  * full_name : str
+  * email : str
+  * password_hash : str
+  * role : str
+}
+
+entity "Connection" as conn {
+  * id : UUID <<PK>>
+  --
+  * name : str
+  * database_type : str
+  * host : str
+  * port : int
+}
+
+entity "MaskingRule" as rule {
+  * id : UUID <<PK>>
+  --
+  * connection_id : UUID <<FK>>
+  * target_table : str
+  * target_column : str
+  * algorithm : str
+}
+
+user "1" --o{ conn : registers
+conn "1" --o{ rule : has
+@enduml
 ```
 
 ---
@@ -169,31 +289,47 @@ erDiagram
 
 ### Diagrama de Arquitectura de Software (Paquetes)
 
-```mermaid
-flowchart LR
-    subgraph Capa Presentación
-        UI[React App]
-    end
-    subgraph Capa Lógica (Servicios)
-        API[Express / FastAPI]
-        TaskQueue[Queue Worker]
-    end
-    subgraph Capa Datos
-        AppDB[(Configuración DB)]
-    end
-    UI --> API
-    API --> TaskQueue
-    API --> AppDB
+```plantuml
+@startuml
+skinparam Shadowing false
+
+package "Frontend SPA" {
+  [React pages] as Pages
+  [API services] as APIClient
+  Pages --> APIClient
+}
+
+package "Backend Core" {
+  [FastAPI Routers] as Routers
+  [Application Core Services] as Services
+  [Database Adapters] as Adapters
+  [Domain Model / VOs] as Domain
+  
+  Routers --> Services
+  Services --> Adapters
+  Services --> Domain
+}
+
+APIClient --> Routers : REST HTTP
+@enduml
 ```
 
 ### Diagrama de Arquitectura del Sistema (Diagrama de Componentes)
 
-```mermaid
-flowchart TD
-    C1[Componente Web UI] -->|HTTP/REST| C2[API Gateway Component]
-    C2 --> C3[Job Manager Component]
-    C3 --> C4[Transformer Engine]
-    C4 <-->|Drivers Nativo| C5[Adaptadores Bases de Datos]
+```plantuml
+@startuml
+skinparam Shadowing false
+left to right direction
+
+[Vite React Application] as UI
+[FastAPI Backend Server] as API
+database "Metadata Store (Memory/DB)" as Meta
+database "Target DB engines" as Targets
+
+UI --> API : HTTP/JSON Requests
+API --> Meta : Query / Persist state
+API --> Targets : Read Schemas & Apply Masking
+@enduml
 ```
 
 ---
@@ -202,17 +338,26 @@ flowchart TD
 
 ### Diagrama de Procesos del Sistema (Diagrama de Actividad)
 
-```mermaid
-stateDiagram-v2
-    [*] --> Pendiente
-    Pendiente --> ExtrayendoDatos : Iniciar Trabajo
-    ExtrayendoDatos --> AplicandoReglas : Lote Extraído
-    AplicandoReglas --> InsertandoDatos : Datos Ofuscados
-    InsertandoDatos --> ExtrayendoDatos : Si hay más lotes
-    InsertandoDatos --> Finalizado : Fin de lotes
-    ExtrayendoDatos --> Error : Falla de Conexión
-    Error --> [*]
-    Finalizado --> [*]
+```plantuml
+@startuml
+skinparam Shadowing false
+start
+:Registrar Conexión;
+:Escanear Esquema;
+if (¿Crear Job?) then (sí)
+  if (¿Modo Job?) then (Dry-Run)
+    :Generar simulación;
+    :Calcular tiempos de performance;
+  else (Apply)
+    :Hacer backup en Vault;
+    :Ejecutar reemplazo/vista en destino;
+  endif
+  :Registrar historial de ejecución;
+else (no)
+  :Solo previsualizar datos;
+endif
+stop
+@enduml
 ```
 
 ---
@@ -221,112 +366,90 @@ stateDiagram-v2
 
 ### Diagrama de Despliegue
 
-```mermaid
-flowchart TB
-    subgraph "Cliente"
-        Browser(Web Browser)
-    end
-    
-    subgraph "Servidor Dockerizado"
-        Frontend[Contenedor Nginx - Frontend]
-        Backend[Contenedor Node.js - Backend API]
-        Worker[Contenedor Python - Enmascarado Core]
-        MetadataDB[(Contenedor PostgreSQL - Config)]
-    end
-    
-    subgraph "Red Corporativa"
-        SourceDB[(BBDD Producción)]
-        TargetDB[(BBDD QA)]
-    end
-    
-    Browser --> Frontend
-    Frontend --> Backend
-    Backend --> Worker
-    Backend --> MetadataDB
-    Worker --> SourceDB
-    Worker --> TargetDB
+```plantuml
+@startuml
+skinparam Shadowing false
+
+node "Browser Cliente" {
+  artifact "React SPA Bundle" as ClientBundle
+}
+
+node "Docker Host (Servidor Aplicación)" {
+  node "Contenedor Backend" {
+    artifact "FastAPI Application" as BackendApp
+  }
+  node "Contenedor Metadata DB" {
+    database "PostgreSQL / MongoDB" as MetaDB
+  }
+  BackendApp --> MetaDB : localhost:5432/27017
+}
+
+node "Bases de Datos Destino" {
+  database "Relational DBs (Postgres, MySQL, Oracle, etc)" as RelDB
+  database "NoSQL / Graph DBs (Mongo, Neo4j, Cassandra)" as NoSQLDB
+}
+
+ClientBundle --> BackendApp : REST API (port 8000)
+BackendApp --> RelDB : Native drivers
+BackendApp --> NoSQLDB : Native drivers
+@enduml
 ```
 
 ---
 
 ## Escenario de Funcionalidad
-### Escenario 1: Detección de Múltiples Motores
-El sistema puede conectar un PostgreSQL de origen y derivar los datos hacia un MySQL destino si los esquemas son compatibles, demostrando la agnosticidad del motor de enmascaramiento.
+### Escenario 1: Soporte Multimotor
+El sistema puede conectar un PostgreSQL de origen y derivar/enmascarar los datos hacia motores NoSQL (como MongoDB o Redis) de manera agnóstica basándose en la configuración de la conexión.
 
-### Escenario 2: Aplicación de Reglas por Expresión Regular
-Se permite buscar patrones como tarjetas de crédito y reemplazar los primeros 12 dígitos por asteriscos en campos de texto libre.
+### Escenario 2: Protección no destructiva (Vistas y Columnas Derivadas)
+Para demostraciones seguras, el sistema crea una vista de enmascaramiento (`masked_view`) en lugar de alterar físicamente los datos originales en la tabla.
 
-### Escenario 3: Generación de Reportes en Múltiples Formatos
-Al terminar una tarea, se expide un reporte en JSON o PDF detallando los campos alterados para auditoría.
+### Escenario 3: Encriptación reversible
+El sistema cifra valores sensibles usando una clave maestra Fernet y permite restaurar la información desde el módulo histórico o de des-enmascarado.
 
 ---
 
 ## Escenario de Usabilidad
-### Escenario 1: Interfaz Intuitiva
-El usuario mapea tablas y columnas arrastrando (drag-and-drop) o seleccionando en menús desplegables sin escribir queries SQL.
+### Escenario 1: Workbench de Enmascaramiento Intuitivo
+El usuario mapea tablas y columnas visualmente desde la pantalla **Protección de Datos**, seleccionando el algoritmo y modo en dropdowns y viendo el resultado final inmediatamente.
 
-### Escenario 2: Mensajes de Error Claros
-Si la conexión a la base de datos de origen falla, se detalla si el error fue por credenciales, host inaccesible, o falta de permisos de lectura.
-
-### Escenario 3: Progreso en Tiempo Real
-Un socket en tiempo real mantiene informado al usuario del porcentaje de avance de la ofuscación.
+### Escenario 2: Diagnóstico de Conexiones
+Si la conexión falla, el sistema proporciona una sugerencia de diagnóstico detallando si el error se debe a host inalcanzable, credenciales erróneas o drivers ausentes.
 
 ---
 
 ## Escenario de Confiabilidad
-### Escenario 1: Manejo de Caídas de Red
-Si la conexión con el destino falla a la mitad del proceso, la tarea se detiene limpiamente y queda en estado "Error recuperable", sin corromper el metadato del sistema.
+### Escenario 1: Resiliencia de Transacciones
+Si una actualización falla físicamente durante la aplicación de enmascaramiento, el Job se marca como `FAILED` y se detiene la secuencia limpia para no dejar la base de datos destino en un estado inconsistente.
 
 ### Escenario 2: Integridad Referencial
-El sistema mantiene un mapeo consistente. Ej: Si el "ID 10" se reemplaza por "ID 99", las llaves foráneas dependientes también serán actualizadas de manera consistente.
-
-### Escenario 3: Cobertura de Pruebas
-El motor de reglas cuenta con >80% de cobertura de pruebas unitarias para asegurar que los datos sensibles nunca escapen intactos por errores de código.
+El sistema mantiene la consistencia de valores enlazados si se definen reglas unificadas por tipo de datos a nivel global.
 
 ---
 
 ## Escenario de Rendimiento
-### Escenario 1: Procesamiento por Lotes (Batching)
-El sistema extrae datos de 10,000 en 10,000 filas (configurable) para no agotar la RAM del servidor.
+### Escenario 1: Procesamiento por Lotes
+La lectura y enmascaramiento físico de tablas pesadas se procesa en batches paginados para evitar desbordes de memoria RAM en el backend.
 
-### Escenario 2: Uso de Memoria
-El pico máximo de consumo de RAM está acotado por el tamaño del lote, haciendo la aplicación predecible.
-
-### Escenario 3: Ejecución Concurrente
-Múltiples tablas que no tienen dependencias entre sí pueden ser enmascaradas por el sistema simultáneamente usando multi-threading (hilos).
+### Escenario 2: Asincronismo
+El uso de FastAPI asíncrono previene el bloqueo de peticiones de otros usuarios mientras se procesan tareas largas de base de datos.
 
 ---
 
 ## Escenario de Mantenibilidad
-### Escenario 1: Adición de Nuevo Patrón
-El sistema utiliza un patrón Strategy; añadir una nueva regla de enmascaramiento implica solo crear una nueva clase heredera, sin modificar el core del procesamiento.
-
-### Escenario 2: Adición de Nuevo Conector
-Si la empresa adopta Oracle DB en el futuro, se puede integrar creando un adaptador específico respetando la interfaz de conexión estándar.
+### Escenario 1: Adición de nuevos Algoritmos
+Gracias al patrón Strategy, añadir un nuevo tipo de máscara sólo requiere implementar una clase más en `strategies.py` sin reescribir el orquestador principal.
 
 ---
-
-## Otros Escenarios
-### Escenario: Seguridad - Prevención de Exposición
-El propio log del sistema de enmascarado ofusca el contenido de los valores; solo indica "Se ofuscaron 5,000 registros en tabla Users".
-
-### Escenario: Compatibilidad Multiplataforma
-Los contenedores garantizan que el sistema funcionará de forma idéntica en Windows, Linux y macOS.
-
----
-
-## Resumen de Atributos de Calidad
-- **Alta Extensibilidad:** Arquitectura basada en plugins/adaptadores para motores y reglas.
-- **Eficiencia Segura:** Enmascarado al vuelo sin persistir datos en discos intermedios.
 
 ## Fortalezas
-- Agnosticismo de base de datos.
-- Arquitectura limpia y escalable.
+- Agnosticismo de base de datos completo (9 motores).
+- Arquitectura limpia basada en DDD.
+- Separación de responsabilidades clara entre UI y backend.
 
 ## Limitaciones Conocidas
-- Puede requerir mucho tiempo para petabytes de datos debido al cuello de botella de la red (I/O).
-- No resuelve el enmascarado estructural (cambio de esquemas).
+- Tareas sobre petabytes de datos están acotadas a la capacidad de la red y throughput del driver.
 
-## Roadmap - Fase 2 (Futuro)
-- Enmascarado en bases de datos orientadas a grafos.
-- Descubrimiento automático de columnas que parecen contener PII usando IA.
+## Roadmap - Fase Futura
+- Implementar descubrimiento automático de PII utilizando técnicas avanzadas de expresión regular y heurística.
+- Soporte para enmascarado dinámico en tiempo de ejecución.

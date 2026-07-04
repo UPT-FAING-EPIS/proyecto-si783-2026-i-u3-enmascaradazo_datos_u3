@@ -15,7 +15,7 @@ Mag. Patrick Cuadros Quiroga
 
 ### Integrantes:
 - Flores Navarro, Eduardo Gino (2023076793)
-- Choqueña Mauricio Adrian (2023076799)
+- Choqueña Mauricio, Adrian (2023076799)
 
 ---
 
@@ -29,6 +29,7 @@ Mag. Patrick Cuadros Quiroga
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 |---|---|---|---|---|---|
 | 1.0 | EFN | MAC | — | Junio 2026 | Versión Original |
+| 2.0 | EFN | MAC | — | Julio 2026 | Rediseño completo con diagramas PlantUML y alineación con el código real de Enmask v2.0 |
 
 ---
 
@@ -57,11 +58,11 @@ Mag. Patrick Cuadros Quiroga
 | 3.1.1 | Diagramas de Casos de Uso | 6 |
 | 3.2 | Vista Lógica | 6 |
 | 3.2.1 | Diagrama de Subsistemas (paquetes) | 7 |
-| 3.2.2 | Diagrama de Secuencia (vista de diseño) | 7 |
+| 3.2.2 | Diagramas de Secuencia (vista de diseño) | 7 |
 | 3.2.3 | Diagrama de Colaboración (vista de diseño) | 7 |
 | 3.2.4 | Diagrama de Objetos | 7 |
 | 3.2.5 | Diagrama de Clases | 7 |
-| 3.2.6 | Diagrama de Base de datos (relacional o no relacional) | 7 |
+| 3.2.6 | Diagrama de Base de datos (relacional y no relacional) | 7 |
 | 3.3 | Vista de Implementación (vista de desarrollo) | 7 |
 | 3.3.1 | Diagrama de arquitectura software (paquetes) | 7 |
 | 3.3.2 | Diagrama de arquitectura del sistema (componentes) | 7 |
@@ -99,11 +100,12 @@ El documento sirve como referencia técnica para el equipo de desarrollo, el doc
 
 El alcance de este documento abarca la arquitectura completa del sistema Enmask v2.0, incluyendo:
 
-- **Backend:** API Gateway (FastAPI), Masking Service, Monitor Service
-- **Frontend:** Dashboard HTML5 con Tailwind CSS y Chart.js
-- **Persistencia:** SQLite (usuarios, métricas), 7 motores de BD destino
-- **Seguridad:** Autenticación bcrypt + Google OAuth2, cifrado Fernet, gestión de claves
-- **Despliegue:** Docker Compose (local) y Render (nube)
+- **Backend:** Aplicación monolítica en **FastAPI (Python)** estructurada siguiendo principios de arquitectura limpia y diseño guiado por el dominio (DDD).
+- **Frontend:** Aplicación de una sola página (SPA) desarrollada en **React + Vite + TypeScript**, estilizada con Tailwind CSS y equipada con gráficos interactivos.
+- **Persistencia de Metadatos:** Configurable mediante repositorios en memoria, MongoDB o PostgreSQL (`REPOSITORY_BACKEND`).
+- **Seguridad:** Autenticación local mediante hashes de contraseñas con bcrypt, JWT para la gestión de sesiones, soporte para Google OAuth2 y encriptación simétrica mediante Fernet (AES-128-CBC) gestionada a través de claves maestras.
+- **Motores Destino Soportados (9):** PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle Database, Apache Cassandra, MongoDB y Redis.
+- **Integraciones Externas:** Extensión de VS Code, Servidor MCP para agentes e IA, y Skills empaquetados para asistentes virtuales.
 
 ### 1.3. Definición, siglas y abreviaturas
 
@@ -121,13 +123,14 @@ El alcance de este documento abarca la arquitectura completa del sistema Enmask 
 | **SRP** | Single Responsibility Principle |
 | **REST** | Representational State Transfer |
 | **UML** | Unified Modeling Language |
+| **MCP** | Model Context Protocol |
 
 ### 1.4. Organización del documento
 
 Este documento se estructura en 4 secciones principales:
 1. **Introducción** — Contexto y propósito del documento.
 2. **Objetivos y Restricciones Arquitectónicas** — Requerimientos que guían las decisiones de diseño.
-3. **Representación de la Arquitectura** — Las 5 vistas del modelo 4+1 (Lógica, Procesos, Desarrollo, Física, Casos de Uso).
+3. **Representación de la Arquitectura** — Las 5 vistas del modelo 4+1 (Lógica, Procesos, Desarrollo, Física, Casos de Uso) modeladas en PlantUML.
 4. **Atributos de Calidad** — Escenarios de evaluación de la arquitectura.
 
 ---
@@ -140,36 +143,33 @@ Los requerimientos funcionales que impactan directamente en las decisiones arqui
 
 | ID | Requerimiento | Impacto Arquitectónico |
 |---|---|---|
-| RF-006 | Conectar a motor de BD | Requiere patrón Factory para instanciar 7+ motores |
-| RF-010 | Ejecutar benchmark comparativo | Requiere comunicación inter-servicio (API → Masking) |
-| RF-013/014 | Cifrar/Descifrar columna | Requiere módulo de criptografía persistente |
-| RF-015/016 | Activar/Restaurar SDM | Requiere backup cifrado y transaccionalidad |
-| RF-018 a RF-025 | Monitoreo completo | Requiere servicio independiente con SQLite propio |
-| RF-001 a RF-005 | Autenticación | Requiere middleware de sesión y cookies seguras |
+| RF-001 | Conectar a motor de BD | Requiere el patrón Factory para instanciar clientes de 9 motores soportados. |
+| RF-002 | Previsualización de Datos | Requiere servicio workbench que realice consultas sin persistir cambios (*Dry-Run*). |
+| RF-003 | Enmascaramiento por Campo | Requiere diseño extensible de estrategias de enmascaramiento (*Strategy Pattern*). |
+| RF-004 | Ejecución de Jobs | Requiere un orquestador asíncrono para ejecutar los modos *dry_run* y *apply*. |
+| RF-005 | Cifrado Simétrico | Requiere módulo de criptografía con almacenamiento en Vault local de valores originales. |
+| RF-006 | Deshacer / Restaurar | Requiere control transaccional de artefactos creados y des-enmascaramiento del Vault. |
+| RF-007 | Panel de Auditoría | Requiere persistir un historial detallado de jobs de enmascaramiento. |
+| RF-008 | Autenticación y Roles | Requiere un módulo de autenticación con rol de administrador auditable. |
 
 ### 2.1.2. Requerimientos No Funcionales – Atributos de Calidad
 
 | ID | Atributo | Requisito Arquitectónico |
 |---|---|---|
-| RNF-001 | Rendimiento | Consultas < 2s (p95), procesamiento nativo en motor BD |
-| RNF-004 | Concurrencia | 10 usuarios simultáneos → FastAPI asíncrono |
-| RNF-005 | Seguridad | Bcrypt, Fernet, cookies HTTP-only, variables de entorno |
-| RNF-011 | Desacoplamiento | Microservicios comunicados vía HTTP REST |
-| RNF-012 | Extensibilidad | Patrón Factory para agregar nuevos motores sin modificar lógica |
-| RNF-013 | Mantenibilidad | SRP, módulos independientes, configuración centralizada |
-| RNF-019 | Portabilidad | Contenerización Docker, docker-compose.yml |
-| RNF-020 | Despliegue en nube | Render Blueprint (render.yaml) |
+| RNF-001 | Rendimiento | Respuestas rápidas en previsualizaciones; procesamiento en streaming o batches en base de datos. |
+| RNF-002 | Seguridad | Hashes bcrypt, encriptación Fernet, almacenamiento seguro de llaves de cifrado en variables de entorno o archivos protegidos. |
+| RNF-003 | Extensibilidad | Patrón Factory para añadir nuevos clientes de bases de datos sin modificar el núcleo del orquestador. |
+| RNF-004 | Concurrencia | FastAPI asíncrono soportado por `asyncio` y clientes asíncronos cuando es posible (`asyncpg`, `aiomysql`). |
+| RNF-005 | Portabilidad | Contenerización completa con Docker y orquestación con Docker Compose. |
 
 #### Restricciones Arquitectónicas
 
 | Restricción | Descripción |
 |---|---|
-| **Lenguaje** | Python 3.11+ (backend), HTML5/JS (frontend) |
-| **Framework** | FastAPI (asíncrono), Tailwind CSS (CDN), Chart.js |
-| **Persistencia** | SQLite para métricas y usuarios (no requiere servidor BD adicional) |
-| **Comunicación** | HTTP/JSON entre microservicios (httpx) |
-| **Seguridad** | Clave Fernet persistente en `.keyfile` o `ENMASK_MASTER_KEY` |
-| **Despliegue** | Docker Compose (7+ contenedores) + Render (3 servicios) |
+| **Lenguaje** | Python 3.12+ (backend), TypeScript (frontend) |
+| **Frameworks** | FastAPI (backend), React + Vite (frontend) |
+| **Criptografía** | Clave simétrica Fernet de 32 bytes provista por criptografía de Python. |
+| **Comunicación** | Protocolo HTTP/JSON (REST) para peticiones web y STDIO JSON-RPC para integraciones MCP. |
 
 ---
 
@@ -177,1002 +177,847 @@ Los requerimientos funcionales que impactan directamente en las decisiones arqui
 
 ### 3.1. Vista de Caso de Uso
 
-La vista de caso de uso es el "hilo conductor" que valida que la arquitectura soporte todos los escenarios de uso del sistema.
+La vista de caso de uso sirve como validación de que la arquitectura soporta las necesidades de negocio del sistema.
 
 #### 3.1.1. Diagramas de Casos de Uso
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                 Diagrama de Casos de Uso — Enmask v2.0                   │
-│                    (Vista Arquitectónica)                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│                          ┌─────────────────────┐                         │
-│                          │    Enmask v2.0       │                         │
-│   ┌──────┐               │                     │               ┌──────┐ │
-│   │      │               │  ┌───────────────┐  │               │      │ │
-│   │Google│───────────────┼──│ CU-001:       │  │               │Email │ │
-│   │OAuth │               │  │ Registrarse   │  │───────────────│+Pass │ │
-│   │      │───────────────┼──│ CU-002:       │  │               │      │ │
-│   └──────┘               │  │ Login         │  │               └──────┘ │
-│                          │  └───────────────┘  │                         │
-│   ┌──────┐               │                     │                         │
-│   │User  │               │  ┌───────────────┐  │                         │
-│   │      │───────────────┼──│ CU-003:       │  │                         │
-│   │      │               │  │ Conectar BD   │  │                         │
-│   │      │───────────────┼──│ CU-004:       │  │                         │
-│   │      │               │  │ Benchmark     │  │                         │
-│   │      │───────────────┼──│ CU-005:       │  │                         │
-│   │      │               │  │ Cifrar/Descif.│  │                         │
-│   └──┬───┘               │  └───────────────┘  │                         │
-│      │                   │                     │                         │
-│      │   ┌──────┐        │  ┌───────────────┐  │                         │
-│      │   │Admin │        │  │ CU-006:       │  │                         │
-│      └───│      │────────┼──│ Activar SDM   │  │                         │
-│          │      │────────┼──│ CU-007:       │  │                         │
-│          │      │        │  │ Monitorear    │  │                         │
-│          │      │────────┼──│ CU-008:       │  │                         │
-│          │      │        │  │ Restaurar SDM │  │                         │
-│          └──────┘        │  └───────────────┘  │                         │
-│                          └─────────────────────┘                         │
-│                                                                           │
-│   ┌─────────────────────────────────────────────────────────────────┐    │
-│   │                    Sistemas Externos                             │    │
-│   │  ┌─────────┐ ┌───────┐ ┌─────────┐ ┌───────┐ ┌───────┐        │    │
-│   │  │PostgreSQL│ │ MySQL │ │ MongoDB │ │ Redis │ │ Neo4j │ ...    │    │
-│   │  └─────────┘ └───────┘ └─────────┘ └───────┘ └───────┘        │    │
-│   │  ┌───────────┐                                                  │    │
-│   │  │Google Auth│                                                  │    │
-│   │  └───────────┘                                                  │    │
-│   └─────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────┘
+El siguiente diagrama en PlantUML muestra los actores que interactúan con el sistema Enmask v2.0 y las funcionalidades expuestas.
+
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam roundcorner 8
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+skinparam ActorBorderColor #2C3E50
+skinparam UsecaseBorderColor #2C3E50
+skinparam UsecaseBackgroundColor #ECF0F1
+
+actor "Usuario QA / Dev" as User
+actor "Administrador" as Admin
+
+rectangle "Sistema Enmask v2.0" {
+  usecase "CU-001: Registrarse" as UC1
+  usecase "CU-002: Iniciar Sesión\n(Local / Google OAuth)" as UC2
+  usecase "CU-003: Registrar y Probar Conexión" as UC3
+  usecase "CU-004: Inspeccionar Esquema (Workbench)" as UC4
+  usecase "CU-005: Previsualizar Enmascaramiento" as UC5
+  usecase "CU-006: Definir Regla por Campo" as UC6
+  usecase "CU-007: Crear y Ejecutar Job\n(Dry-run / Apply)" as UC7
+  usecase "CU-008: Restaurar/Desencriptar Datos" as UC8
+  usecase "CU-009: Auditar Historial de Jobs" as UC9
+  usecase "CU-010: Gestionar Usuarios y Roles" as UC10
+}
+
+actor "Google OAuth" as Google
+actor "Bases de Datos Destino\n(Relacionales, NoSQL, Grafos)" as DB
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+User --> UC9
+
+Admin --|> User
+Admin --> UC10
+
+UC2 -- Google
+UC3 -- DB
+UC7 -- DB
+UC8 -- DB
+@enduml
 ```
 
-**Trazabilidad Casos de Uso → Componentes Arquitectónicos:**
+**Trazabilidad Casos de Uso → Módulos del Sistema:**
 
 | Caso de Uso | Componentes Involucrados |
 |---|---|
-| CU-001/002: Registro/Login | `main.py` (endpoints), `auth.py` (tokens), `db_usuarios.py` (persistencia) |
-| CU-003: Conectar BD | `main.py` (endpoint), `database_manager.py` (Factory + motores) |
-| CU-004: Benchmark | `main.py` (orquestación), `masking_service.py` (procesamiento), `monitor_service.py` (métricas) |
-| CU-005: Cifrar/Descifrar | `masking_service.py`, `masking.py` (Fernet), `database_manager.py` (escritura) |
-| CU-006/008: SDM | `masking_service.py`, `governance.py`, `masking.py` (backup cifrado) |
-| CU-007: Monitorear | `main.py` (proxy), `monitor_service.py` (SQLite), `health_monitor.py`, `system_metrics.py` |
+| CU-001/002: Registro/Login | `auth.py` (Endpoints), `auth_service.py` (Dominio), `UserRepository` (Metadatos) |
+| CU-003: Registrar/Probar Conexión | `connections.py`, `connection_service.py`, `DatabaseFactory` |
+| CU-004/005: Inspección & Preview | `workbench.py`, `workbench_service.py`, `DatabaseFactory` |
+| CU-006: Definir Regla | `rules.py`, `ConnectionRepository` |
+| CU-007: Ejecutar Job | `jobs.py`, `job_orchestrator.py`, `masking_service.py`, `DatabaseFactory` |
+| CU-008: Restaurar Datos | `job_orchestrator.py`, `vault_repository.py` |
+| CU-009: Auditoría | `reports.py`, `AuditLogRepository` |
+| CU-010: Admin Roles | `auth.py`, `auth_service.py` (validación de variable de entorno `ADMIN_EMAILS`) |
 
 ---
 
 ### 3.2. Vista Lógica
 
-La vista lógica describe la estructura estática del sistema en términos de subsistemas, clases, objetos y sus relaciones.
+La vista lógica describe la estructura estática del sistema en términos de subsistemas, clases y relaciones de persistencia.
 
 #### 3.2.1. Diagrama de Subsistemas (paquetes)
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│              Diagrama de Subsistemas — Enmask v2.0                       │
-│                 (Arquitectura en Capas)                                  │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ╔═══════════════════════════════════════════════════════════════════╗   │
-│  ║                    <<capa presentación>>                          ║   │
-│  ║                                                                   ║   │
-│  ║  ┌───────────────┐  ┌────────────────┐  ┌─────────────────────┐ ║   │
-│  ║  │  login.html    │  │  index.html     │  │  static/*           │ ║   │
-│  ║  │  (Auth UI)     │  │  (Dashboard)    │  │  (CSS/JS/Chart.js)  │ ║   │
-│  ║  └───────────────┘  └────────────────┘  └─────────────────────┘ ║   │
-│  ╚═══════════════════════════════════════════════════════════════════╝   │
-│                                    │                                      │
-│                                    ▼                                      │
-│  ╔═══════════════════════════════════════════════════════════════════╗   │
-│  ║                    <<capa api gateway>>                           ║   │
-│  ║                                                                   ║   │
-│  ║  ┌─────────────────────────────────────────────────────────────┐ ║   │
-│  ║  │                        main.py                               │ ║   │
-│  ║  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────────┐  │ ║   │
-│  ║  │  │Auth API  │ │Conn API  │ │Benchmark │ │Monitor Proxy  │  │ ║   │
-│  ║  │  │Endpoints │ │Endpoints │ │Endpoints │ │Endpoints      │  │ ║   │
-│  ║  │  └──────────┘ └──────────┘ └──────────┘ └───────────────┘  │ ║   │
-│  ║  │  ┌──────────────┐ ┌──────────────┐                         │ ║   │
-│  ║  │  │Governance API│ │Masking Proxy │                         │ ║   │
-│  ║  │  │Endpoints     │ │Endpoints     │                         │ ║   │
-│  ║  │  └──────────────┘ └──────────────┘                         │ ║   │
-│  ║  └─────────────────────────────────────────────────────────────┘ ║   │
-│  ╚═══════════════════════════════════════════════════════════════════╝   │
-│              │                    │                    │                    │
-│              ▼                    ▼                    ▼                    │
-│  ╔═══════════════╗  ╔═══════════════════╗  ╔═══════════════════╗         │
-│  ║<<capa auth>>  ║  ║<<capa masking>>   ║  ║<<capa monitor>>  ║         │
-│  ║               ║  ║                   ║  ║                  ║         │
-│  ║ auth.py       ║  ║ masking_service.py║  ║ monitor_service.py║        │
-│  ║ db_usuarios.py║  ║ masking.py        ║  ║ monitor.py       ║         │
-│  ║ oauth_google.py║ ║ encryption_svc.py ║  ║ health_monitor.py║         │
-│  ║               ║  ║ key_manager.py    ║  ║ system_metrics.py║         │
-│  ║               ║  ║ governance.py     ║  ║ service_checker.py║        │
-│  ╚═══════════════╝  ╚═══════════════════╝  ╚═══════════════════╝         │
-│              │                    │                    │                    │
-│              ▼                    ▼                    ▼                    │
-│  ╔═══════════════════════════════════════════════════════════════════╗   │
-│  ║                    <<capa datos>>                                 ║   │
-│  ║                                                                   ║   │
-│  ║  ┌──────────────────┐  ┌──────────────┐  ┌────────────────────┐ ║   │
-│  ║  │ database_manager.py│ │  config.py   │  │ SQLite             │ ║   │
-│  ║  │ (Factory Pattern) │ │  (.env)      │  │ (monitor_metrics.db)│ ║   │
-│  ║  │                   │ │              │  │ (users.db)          │ ║   │
-│  ║  │ ┌───────────────┐ │ └──────────────┘  └────────────────────┘ ║   │
-│  ║  │ │BaseDeDatos    │ │                                           ║   │
-│  ║  │ │(abstracta)    │ │                                           ║   │
-│  ║  │ │PostgresDB     │ │                                           ║   │
-│  ║  │ │MySQLDB        │ │                                           ║   │
-│  ║  │ │SQLiteDB       │ │                                           ║   │
-│  ║  │ │SQLServerDB    │ │                                           ║   │
-│  ║  │ │MongoDB        │ │                                           ║   │
-│  ║  │ │RedisDB        │ │                                           ║   │
-│  ║  │ │Neo4jDB        │ │                                           ║   │
-│  ║  │ │CassandraDB    │ │                                           ║   │
-│  ║  │ └───────────────┘ │                                           ║   │
-│  ║  └──────────────────┘                                            ║   │
-│  ╚═══════════════════════════════════════════════════════════════════╝   │
-│                                    │                                      │
-│                                    ▼                                      │
-│  ╔═══════════════════════════════════════════════════════════════════╗   │
-│  ║              <<motores de bases de datos externos>>                ║   │
-│  ║  ┌─────────┐┌───────┐┌──────────┐┌─────────┐┌───────┐┌───────┐ ║   │
-│  ║  │PostgreSQL││ MySQL ││SQL Server││ MongoDB ││ Redis ││ Neo4j │ ║   │
-│  ║  └─────────┘└───────┘└──────────┘└─────────┘└───────┘└───────┘ ║   │
-│  ╚═══════════════════════════════════════════════════════════════════╝   │
-└─────────────────────────────────────────────────────────────────────────┘
+El sistema está dividido en capas de acuerdo con los principios de Clean Architecture y Domain-Driven Design (DDD).
+
+```plantuml
+@startuml
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+skinparam PackageBorderColor #34495E
+skinparam PackageBackgroundColor #F2F4F4
+
+package "Capa de Presentación (React SPA)" {
+  [Pages (Dashboard, Connections, DataProtection, Jobs, Admin)] as Pages
+  [Services (api.ts HTTP Client)] as UISvc
+  Pages --> UISvc
+}
+
+package "Capa de API & Aplicación (FastAPI Backend)" {
+  package "API Routers" {
+    [auth.py] as R_Auth
+    [connections.py] as R_Conn
+    [rules.py] as R_Rules
+    [jobs.py] as R_Jobs
+    [workbench.py] as R_Workbench
+  }
+  package "Application Services" {
+    [AuthService] as Svc_Auth
+    [ConnectionService] as Svc_Conn
+    [JobOrchestrator] as Svc_Jobs
+    [MaskingService] as Svc_Masking
+    [WorkbenchService] as Svc_Workbench
+  }
+  UISvc --> R_Auth : HTTP REST (JSON)
+  UISvc --> R_Conn : HTTP REST (JSON)
+  UISvc --> R_Rules : HTTP REST (JSON)
+  UISvc --> R_Jobs : HTTP REST (JSON)
+  UISvc --> R_Workbench : HTTP REST (JSON)
+
+  R_Auth --> Svc_Auth
+  R_Conn --> Svc_Conn
+  R_Rules --> Svc_Jobs
+  R_Jobs --> Svc_Jobs
+  R_Workbench --> Svc_Workbench
+  Svc_Jobs --> Svc_Masking
+  Svc_Workbench --> Svc_Masking
+}
+
+package "Capa de Dominio" {
+  [Entities (User, Connection, Rule, Job, AuditLog)] as Entities
+  [Value Objects (DatabaseType, ProtectionMode, Algorithm)] as VOs
+  [Interfaces (Repository, MaskingStrategy)] as Interfaces
+  Svc_Auth --> Entities
+  Svc_Conn --> Entities
+  Svc_Jobs --> Entities
+  Svc_Masking --> Interfaces
+}
+
+package "Capa de Infraestructura" {
+  [DatabaseFactory & DB Clients\n(PostgreSQL, MySQL, SQLServer, SQLite,\nOracle, Cassandra, MongoDB, Redis, Neo4j)] as DB_Clients
+  [Masking Strategies\n(Hashing, Redaction, Substitution,\nNullification, Fpe, Perturbation)] as Mask_Strats
+  [Repositories (InMemory, MongoDB, Postgres)] as Repos
+  
+  Svc_Conn --> DB_Clients
+  Svc_Jobs --> DB_Clients
+  Svc_Workbench --> DB_Clients
+  Svc_Masking --> Mask_Strats
+  Svc_Auth --> Repos
+  Repos ..|> Interfaces
+  Mask_Strats ..|> Interfaces
+}
+
+database "Bases de Datos Externas" as Ext_DB
+DB_Clients --> Ext_DB : Native Connections
+@enduml
 ```
 
-#### 3.2.2. Diagrama de Secuencia (vista de diseño)
+#### 3.2.2. Diagramas de Secuencia (vista de diseño)
 
-**Secuencia: Autenticación de Usuario (Login)**
+##### Secuencia: Autenticación de Usuario (Login)
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│            Diagrama de Secuencia — Login de Usuario                      │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  :Frontend        :main.py         :db_usuarios    :auth.py             │
-│      │                │                  │              │                │
-│      │  POST /api/    │                  │              │                │
-│      │  login         │                  │              │                │
-│      │ (correo,pass)  │                  │              │                │
-│      │───────────────►│                  │              │                │
-│      │                │                  │              │                │
-│      │                │  autenticar_     │              │                │
-│      │                │  usuario(correo, │              │                │
-│      │                │  password)       │              │                │
-│      │                │─────────────────►│              │                │
-│      │                │                  │              │                │
-│      │                │                  │ Buscar user  │                │
-│      │                │                  │ por correo   │                │
-│      │                │                  │─────┐        │                │
-│      │                │                  │     │        │                │
-│      │                │                  │◄────┘        │                │
-│      │                │                  │              │                │
-│      │                │                  │ Verificar    │                │
-│      │                │                  │ bcrypt hash  │                │
-│      │                │                  │─────┐        │                │
-│      │                │                  │     │        │                │
-│      │                │                  │◄────┘        │                │
-│      │                │                  │              │                │
-│      │                │  usuario / None  │              │                │
-│      │                │◄─────────────────│              │                │
-│      │                │                  │              │                │
-│      │                │  crear_token_    │              │                │
-│      │                │  sesion()        │              │                │
-│      │                │─────────────────────────────────►│               │
-│      │                │                  │              │                │
-│      │                │                  │  UUID token  │                │
-│      │                │                  │  SESIONES    │                │
-│      │                │                  │  _ACTIVAS    │                │
-│      │                │  token           │              │                │
-│      │                │◄────────────────────────────────│                │
-│      │                │                  │              │                │
-│      │  Set-Cookie:   │                  │              │                │
-│      │  session_token │                  │              │                │
-│      │  + JSON        │                  │              │                │
-│      │◄───────────────│                  │              │                │
-│      ▼                ▼                  ▼              ▼                │
-└─────────────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+autonumber
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+skinparam ParticipantBorderColor #2C3E50
+skinparam ParticipantBackgroundColor #ECF0F1
+
+actor Usuario
+participant "React Frontend\n(Login.tsx)" as FE
+participant "FastAPI Router\n(auth.py)" as R_Auth
+participant "AuthService\n(auth_service.py)" as S_Auth
+participant "UserRepository\n(InMemory / MongoDB)" as Repo
+database "Metadata DB" as DB
+
+Usuario -> FE : Ingresa email y contraseña
+FE -> R_Auth : POST /api/v1/auth/login\n{email, password}
+activate R_Auth
+R_Auth -> S_Auth : authenticate_user(email, password)
+activate S_Auth
+S_Auth -> Repo : get_by_email(email)
+activate Repo
+Repo -> DB : Consultar usuario
+DB --> Repo : Retorna datos de usuario
+Repo --> S_Auth : Retorna entidad User
+deactivate Repo
+S_Auth -> S_Auth : verificar password_hash\n(bcrypt.verify)
+alt Credenciales válidas
+  S_Auth -> S_Auth : create_access_token(user_id, rol)
+  S_Auth --> R_Auth : Retorna access_token & token_type
+  R_Auth --> FE : HTTP 200 {access_token, token_type, user}
+  FE -> FE : Guardar token en localStorage\ny actualizar estado
+  FE --> Usuario : Redirigir al Dashboard
+else Credenciales inválidas
+  S_Auth --> R_Auth : Lanzar HTTPException(401)
+  deactivate S_Auth
+  R_Auth --> FE : HTTP 401 Unauthorized
+  deactivate R_Auth
+  FE --> Usuario : Mostrar mensaje de error
+end
+@enduml
 ```
 
-**Secuencia: Ejecución de Benchmark de Enmascaramiento**
+##### Secuencia: Ejecución de Job de Enmascaramiento
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│       Diagrama de Secuencia — Benchmark de Enmascaramiento               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│ :Frontend  :main.py  :MaskingSvc  :motor:BD  :masking.py  :MonitorSvc  │
-│    │          │          │           │           │           │           │
-│    │ POST     │          │           │           │           │           │
-│    │ /execute │          │           │           │           │           │
-│    │ _test    │          │           │           │           │           │
-│    │─────────►│          │           │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │ POST     │           │           │           │           │
-│    │          │/benchmark│           │           │           │           │
-│    │          │─────────►│           │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ t_inicio  │           │           │           │
-│    │          │          │ perf_ns() │           │           │           │
-│    │          │          │───┐       │           │           │           │
-│    │          │          │   │       │           │           │           │
-│    │          │          │◄──┘       │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ ejecutar_ │           │           │           │
-│    │          │          │ consulta()│           │           │           │
-│    │          │          │──────────►│           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ datos     │           │           │           │
-│    │          │          │ crudos    │           │           │           │
-│    │          │          │◄──────────│           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ t_normal  │           │           │           │
-│    │          │          │ perf_ns() │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ aplicar_  │           │           │           │
-│    │          │          │ masking() │           │           │           │
-│    │          │          │──────────────────────►│           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ datos     │           │           │           │
-│    │          │          │ masked    │           │           │           │
-│    │          │          │◄──────────────────────│           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ t_mask    │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ cifrar_   │           │           │           │
-│    │          │          │ valor()   │           │           │           │
-│    │          │          │──────────────────────►│           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ datos     │           │           │           │
-│    │          │          │ encrypted │           │           │           │
-│    │          │          │◄──────────────────────│           │           │
-│    │          │          │           │           │           │           │
-│    │          │          │ t_encrypt │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │ overhead │           │           │           │           │
-│    │          │◄─────────│           │           │           │           │
-│    │          │          │           │           │           │           │
-│    │          │ POST     │           │           │           │           │
-│    │          │/metrics  │           │           │           │           │
-│    │          │──────────────────────────────────────────────►│           │
-│    │          │          │           │           │     SQLite │           │
-│    │          │ OK       │           │           │           │           │
-│    │          │◄──────────────────────────────────────────────│           │
-│    │          │          │           │           │           │           │
-│    │ JSON:    │          │           │           │           │           │
-│    │ data +   │          │           │           │           │           │
-│    │ metricas │          │           │           │           │           │
-│    │◄─────────│          │           │           │           │           │
-│    ▼          ▼          ▼           ▼           ▼           ▼           │
-└─────────────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+autonumber
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+
+actor "Usuario QA" as User
+participant "React Frontend\n(DataProtection.tsx / Jobs.tsx)" as FE
+participant "Jobs Router\n(jobs.py)" as R_Jobs
+participant "JobOrchestrator\n(job_orchestrator.py)" as S_Jobs
+participant "DatabaseFactory\n(factory.py)" as Factory
+participant "DBClient\n(PostgresClient, etc.)" as Client
+database "Target Database" as TargetDB
+participant "MaskingService\n(masking_service.py)" as S_Masking
+participant "MaskingStrategy\n(strategies.py)" as Strat
+database "Vault Repository\n(vault_repository.py)" as Vault
+
+User -> FE : Configura reglas y ejecuta Job (Modo: Apply / Dry-run)
+FE -> R_Jobs : POST /api/v1/jobs/\n{connection_id, run_mode, rules}
+activate R_Jobs
+R_Jobs -> S_Jobs : create_and_execute_job(conn_id, run_mode, rules)
+activate S_Jobs
+S_Jobs -> S_Jobs : Registrar Job (Estado: PENDING)
+
+
+S_Jobs -> Factory : get_client(connection_entity)
+activate Factory
+Factory -> Client : Instanciar cliente específico
+Factory --> S_Jobs : Retorna DBClient
+deactivate Factory
+
+S_Jobs -> Client : connect()
+S_Jobs -> Client : fetch_records(table, limit)
+activate Client
+Client -> TargetDB : Ejecuta query de extracción
+TargetDB --> Client : Retorna registros crudos
+Client --> S_Jobs : Retorna registros
+deactivate Client
+
+loop Para cada registro
+  loop Para cada regla por campo
+    S_Jobs -> S_Masking : mask_value(value, strategy, protection_mode)
+    activate S_Masking
+    S_Masking -> Strat : mask(value, options)
+    activate Strat
+    Strat --> S_Masking : Retorna valor enmascarado
+    deactivate Strat
+    
+    alt run_mode == APPLY
+      alt protection_mode == static_mask o symmetric_encryption
+        S_Masking -> Vault : store_original_value(job_id, table, col, original_val)
+      end
+    end
+    S_Masking --> S_Jobs : Retorna valor final protegido
+    deactivate S_Masking
+  end
+end
+
+alt run_mode == APPLY
+  S_Jobs -> Client : apply_masking_changes(table, protection_mode, protected_records)
+  activate Client
+  Client -> TargetDB : Crear vistas / agregar columnas / actualizar registros físicos
+  TargetDB --> Client : Confirmación
+  Client --> S_Jobs : Éxito
+  deactivate Client
+  S_Jobs -> S_Jobs : Actualizar Job (Estado: COMPLETED)
+else run_mode == DRY_RUN
+  S_Jobs -> S_Jobs : Guardar muestra en logs de Job (sin modificar base de datos)
+  S_Jobs -> S_Jobs : Actualizar Job (Estado: COMPLETED)
+end
+
+S_Jobs --> R_Jobs : Retorna resultado de ejecución
+deactivate S_Jobs
+R_Jobs --> FE : HTTP 200 {job_id, status, records_processed, artifacts_generated}
+deactivate R_Jobs
+FE --> User : Mostrar resumen y métricas de rendimiento del Job
+@enduml
 ```
 
 #### 3.2.3. Diagrama de Colaboración (vista de diseño)
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│         Diagrama de Colaboración — Ejecución de Benchmark                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│   ┌──────────┐         ┌──────────────┐        ┌──────────────────┐     │
-│   │ Frontend  │────────►│   main.py    │───────►│ masking_service  │     │
-│   │ (Browser) │  HTTP   │ (API Gateway)│  HTTP  │    .py           │     │
-│   │          │◄────────│              │◄───────│ (Masking Service)│     │
-│   └──────────┘  JSON   └──────┬───────┘  JSON  └────────┬─────────┘     │
-│                               │                          │               │
-│                               │                          │               │
-│                    ┌──────────▼──────────┐    ┌──────────▼──────────┐    │
-│                    │ database_manager.py │    │    masking.py       │    │
-│                    │  (DatabaseFactory)  │    │ (Masking Engine)    │    │
-│                    │                    │    │                    │    │
-│                    │ ┌────────────────┐ │    │ +aplicar_enmasc()  │    │
-│                    │ │ PostgresDB     │ │    │ +cifrar_valor()    │    │
-│                    │ │ MySQLDB        │ │    │ +descifrar_valor() │    │
-│                    │ │ MongoDB        │ │    │ +mask_name()       │    │
-│                    │ │ RedisDB        │ │    │ +mask_email()      │    │
-│                    │ │ Neo4jDB        │ │    │ +mask_phone()      │    │
-│                    │ │ ...            │ │    │ +mask_dni()        │    │
-│                    │ └────────────────┘ │    └────────────────────┘    │
-│                    └─────────┬──────────┘                               │
-│                              │                                          │
-│                              ▼                                          │
-│                    ┌──────────────────┐        ┌──────────────────┐     │
-│                    │  Motor de BD     │        │ monitor_service  │     │
-│                    │  Externo         │        │    .py           │     │
-│                    │ (PostgreSQL,     │        │ (Monitor Service)│     │
-│                    │  MySQL, etc.)    │        │                  │     │
-│                    └──────────────────┘        │ +registrar()     │     │
-│                                                │ +obtener()       │     │
-│                                                └────────┬─────────┘     │
-│                                                         │               │
-│                                                         ▼               │
-│                                                ┌──────────────────┐     │
-│                                                │ SQLite           │     │
-│                                                │ (monitor_        │     │
-│                                                │  metrics.db)     │     │
-│                                                └──────────────────┘     │
-│                                                                           │
-│   COMUNICACIÓN:                                                           │
-│   • Frontend ↔ main.py: HTTP REST (JSON)                                │
-│   • main.py ↔ masking_service.py: HTTP REST (httpx)                     │
-│   • main.py ↔ monitor_service.py: HTTP REST (httpx)                     │
-│   • masking_service.py ↔ database_manager.py: Llamada directa (Python)  │
-│   • masking_service.py ↔ masking.py: Llamada directa (Python)           │
-│   • database_manager.py ↔ Motor BD: Driver nativo (psycopg2, etc.)      │
-│   • monitor_service.py ↔ SQLite: sqlite3 (local)                        │
-└─────────────────────────────────────────────────────────────────────────┘
+El siguiente diagrama representa cómo los diferentes componentes del backend colaboran para cumplir con el proceso de enmascaramiento.
+
+```plantuml
+@startuml
+skinparam componentStyle uml2
+left to right direction
+skinparam Shadowing false
+
+rectangle "Capa Presentación" {
+  component "React UI\n(Browser)" as FE
+}
+rectangle "Capa API Gateway" {
+  component "FastAPI App\n(main.py + Router)" as API
+}
+rectangle "Capa de Aplicación" {
+  component "JobOrchestrator\n(job_orchestrator.py)" as S_Jobs
+  component "MaskingService\n(masking_service.py)" as S_Masking
+}
+rectangle "Capa de Infraestructura" {
+  component "DatabaseFactory\n(factory.py)" as Factory
+  component "DB Clients\n(Postgres, Mongo, Neo4j, etc.)" as Clients
+  component "Masking Strategies\n(strategies.py)" as Strats
+}
+database "Target DBs\n(MySQL, PostgreSQL,\nNeo4j, Cassandra, etc.)" as ExtDB
+
+FE --(01 HTTP/JSON)--> API : "1: Iniciar Job\n7: Retornar resultado"
+API --(02 Python Call)--> S_Jobs : "2: create_and_execute_job()"
+S_Jobs --(03 Factory Call)--> Factory : "3: get_client()"
+Factory --(04 Instantiate)--> Clients : "4: Crear conector"
+Clients --(05 Query)--> ExtDB : "5: Conectar y extraer registros"
+S_Jobs --(06 Python Call)--> S_Masking : "6: mask_value()"
+S_Masking --(07 Strategy Call)--> Strats : "7: mask()"
+@enduml
 ```
 
 #### 3.2.4. Diagrama de Objetos
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│              Diagrama de Objetos — Instancias en Ejecución               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    API Gateway (main.py)                         │    │
-│  │                                                                  │    │
-│  │  settings : Settings          SESIONES_ACTIVAS : Dict            │    │
-│  │  ┌──────────────────┐        ┌──────────────────────────┐       │    │
-│  │  │ APP_NAME: str    │        │ "token1": {username,     │       │    │
-│  │  │ DATA_DIR: str    │        │   email, conexiones...}  │       │    │
-│  │  │ PG_HOST: str     │        │ "token2": {...}          │       │    │
-│  │  │ MASKING_URL: str │        └──────────────────────────┘       │    │
-│  │  │ MONITOR_URL: str │                                           │    │
-│  │  └──────────────────┘                                           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  ┌──────────────────────┐    ┌──────────────────────┐                   │
-│  │ Masking Service      │    │ Monitor Service       │                   │
-│  │                      │    │                       │                   │
-│  │ cipher_suite: Fernet │    │ db_path: str          │                   │
-│  │ ┌──────────────────┐ │    │ ┌───────────────────┐ │                   │
-│  │ │ FERNET_KEY: bytes│ │    │ │ metrics[]         │ │                   │
-│  │ │ (cargado de      │ │    │ │ system_metrics[]  │ │                   │
-│  │ │  .keyfile)       │ │    │ │ db_health[]       │ │                   │
-│  │ └──────────────────┘ │    │ │ service_health[]  │ │                   │
-│  └──────────────────────┘    │ │ algorithm_metrics[]│ │                  │
-│                              │ │ system_errors[]   │ │                   │
-│  ┌──────────────────────┐    │ └───────────────────┘ │                   │
-│  │ DatabaseFactory      │    └──────────────────────┘                   │
-│  │                      │                                               │
-│  │ motores: Dict        │    ┌──────────────────────┐                   │
-│  │ ┌──────────────────┐ │    │ User (SQLite)         │                   │
-│  │ │"postgres"→Postgres│ │    │                       │                   │
-│  │ │"mysql"→MySQLDB   │ │    │ id: INTEGER           │                   │
-│  │ │"sqlite"→SQLiteDB │ │    │ nombre_completo: TEXT │                   │
-│  │ │"mongodb"→MongoDB │ │    │ correo: TEXT          │                   │
-│  │ │"redis"→RedisDB   │ │    │ password_hash: TEXT   │                   │
-│  │ │"neo4j"→Neo4jDB   │ │    │ proveedor: TEXT       │                   │
-│  │ │"sqlserver"→SQLSvr│ │    │ fecha_creacion: DT    │                   │
-│  │ └──────────────────┘ │    └──────────────────────┘                   │
-│  └──────────────────────┘                                               │
-└─────────────────────────────────────────────────────────────────────────┘
+Este diagrama de objetos describe las instancias que se relacionan en tiempo de ejecución para ejecutar un Job sobre una conexión específica.
+
+```plantuml
+@startuml
+skinparam Shadowing false
+
+object "conn_postgres: Connection" as conn1 {
+  id = "conn-001"
+  name = "PostgreSQL Local"
+  database_type = DatabaseType.POSTGRES
+  host = "localhost"
+  port = 5432
+  database = "users_db"
+  username = "postgres"
+  is_active = true
+}
+
+object "rule_hashing: MaskingRule" as rule1 {
+  id = "rule-001"
+  connection_id = "conn-001"
+  target_table = "public.users"
+  target_column = "dni"
+  algorithm = MaskingAlgorithm.HASHING
+  protection_mode = ProtectionMode.STATIC_MASK
+  strategy_options = {"salt": "academic_secops"}
+}
+
+object "rule_redaction: MaskingRule" as rule2 {
+  id = "rule-002"
+  connection_id = "conn-001"
+  target_table = "public.users"
+  target_column = "email"
+  algorithm = MaskingAlgorithm.REDACTION
+  protection_mode = ProtectionMode.VIRTUAL_VIEW
+  strategy_options = {"mask_char": "*", "preserve_domain": true}
+}
+
+object "job_apply: MaskingJob" as job1 {
+  id = "job-001"
+  connection_id = "conn-001"
+  run_mode = MaskingRunMode.APPLY
+  status = "COMPLETED"
+  records_processed = 1250
+  artifacts_generated = ["public.users_masked_view", "public.users.email_masked"]
+  created_at = 2026-07-04T13:00:00
+}
+
+object "user_admin: User" as user1 {
+  id = "user-100"
+  full_name = "Eduardo Flores"
+  email = "admin@demo.com"
+  role = "admin"
+  provider = "local"
+}
+
+job1 ..> conn1 : "ejecutado sobre"
+rule1 ..> conn1 : "asociada a"
+rule2 ..> conn1 : "asociada a"
+job1 "1" *-- "*" rule1 : "ejecuta"
+job1 "1" *-- "*" rule2 : "ejecuta"
+user1 ..> job1 : "crea y monitorea"
+@enduml
 ```
 
 #### 3.2.5. Diagrama de Clases
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    Diagrama de Clases — Enmask v2.0                      │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────────┐      ┌─────────────────────────────┐   │
-│  │      <<abstract>>           │      │       DatabaseFactory       │   │
-│  │       BaseDeDatos           │      ├─────────────────────────────┤   │
-│  ├─────────────────────────────┤      │                             │   │
-│  │ - credenciales: Dict        │◄─────│ +obtener_motor(motor,       │   │
-│  ├─────────────────────────────┤creates│  credenciales): BaseDeDatos│   │
-│  │ + conectar(): Connection    │      └─────────────────────────────┘   │
-│  │ + obtener_esquema(): Dict   │                                        │
-│  │ + ejecutar_consulta(): List │      ┌─────────────────────────────┐   │
-│  └──────────┬──────────────────┘      │         Settings            │   │
-│             │                         ├─────────────────────────────┤   │
-│    ┌────────┼────────┬────────┐       │ +APP_NAME: str              │   │
-│    │        │        │        │       │ +DEBUG: bool                │   │
-│    ▼        ▼        ▼        ▼       │ +DATA_DIR: str              │   │
-│ ┌───────┐┌──────┐┌───────┐┌──────┐   │ +PG_HOST/MYSQL_HOST/...     │   │
-│ │Postgres││MySQL ││SQLite ││MongoDB│  └─────────────────────────────┘   │
-│ │  DB   ││  DB  ││  DB   ││      │                                     │
-│ ├───────┤├──────┤├───────┤├──────┤   ┌─────────────────────────────┐   │
-│ │psycopg2││pymysql││sqlite3││pymongo│  │      MaskingEngine         │   │
-│ └───────┘└──────┘└───────┘└──────┘   │       (masking.py)          │   │
-│ ┌───────┐┌──────┐┌───────┐          ├─────────────────────────────┤   │
-│ │RedisDB││Neo4jDB││SQLSvrDB│         │ -FERNET_KEY: bytes          │   │
-│ ├───────┤├──────┤├───────┤          │ -cipher_suite: Fernet       │   │
-│ │redis  ││neo4j ││pymssql │         ├─────────────────────────────┤   │
-│ └───────┘└──────┘└───────┘          │ +aplicar_enmascaramiento()  │   │
-│                                      │ +cifrar_valor(): str        │   │
-│  ┌─────────────────────────────┐     │ +descifrar_valor(): str     │   │
-│  │       AuthModule            │     │ +mask_name/email/phone/dni()│   │
-│  │    (auth.py + db_usuarios)  │     │ +academic_mask_value(): str │   │
-│  ├─────────────────────────────┤     └─────────────────────────────┘   │
-│  │ -SESIONES_ACTIVAS: Dict     │                                       │
-│  ├─────────────────────────────┤     ┌─────────────────────────────┐   │
-│  │ +crear_token_sesion(): str  │     │     GovernanceSDM           │   │
-│  │ +obtener_sesion_actual():Dct│     │      (governance.py)        │   │
-│  │ +revocar_token(): void      │     ├─────────────────────────────┤   │
-│  │ +agregar_conexion(): str    │     │ +activar_proteccion(): Dict │   │
-│  │ +eliminar_conexion(): void  │     │ +restaurar_datos(): Dict    │   │
-│  │ +obtener_conexion(): Dict   │     │ +consultar_estado(): Dict   │   │
-│  └─────────────────────────────┘     └──────────────┬──────────────┘   │
-│                                                      │ uses             │
-│  ┌─────────────────────────────┐     ┌──────────────▼──────────────┐   │
-│  │     MonitorService          │     │      MaskingEngine          │   │
-│  │  (monitor_service.py)       │     │   (cifrar/descifrar)        │   │
-│  ├─────────────────────────────┤     └─────────────────────────────┘   │
-│  │ -db_path: str               │                                       │
-│  ├─────────────────────────────┤     ┌─────────────────────────────┐   │
-│  │ +registrar_metrica(): void  │     │      HealthMonitor          │   │
-│  │ +obtener_metricas(): List   │     │   (health_monitor.py)       │   │
-│  │ +registrar_error(): void    │     ├─────────────────────────────┤   │
-│  │ +obtener_salud_bd(): List   │     │ +verificar_sistema(): Dict  │   │
-│  │ +ranking_algoritmos(): List │     │ +verificar_servicios(): Dict│   │
-│  └─────────────────────────────┘     │ +verificar_bd(): Dict       │   │
-│                                      └─────────────────────────────┘   │
-│                                                                           │
-│  RELACIONES CLAVE:                                                        │
-│  • DatabaseFactory ──creates──► BaseDeDatos (8 subclases)                │
-│  • main.py ──uses──► DatabaseFactory, AuthModule                         │
-│  • main.py ──HTTP──► MaskingService, MonitorService                      │
-│  • MaskingService ──uses──► MaskingEngine, GovernanceSDM                 │
-│  • GovernanceSDM ──uses──► MaskingEngine (cifrar_valor/descifrar_valor)  │
-│  • MonitorService ──persists──► SQLite (6 tablas)                        │
-│  • AuthModule ──persists──► SQLite (users)                               │
-└─────────────────────────────────────────────────────────────────────────┘
+El diseño orientado a objetos del backend utiliza el patrón **Factory** para abstracción de motores y **Strategy** para la flexibilidad de algoritmos de enmascaramiento.
+
+```plantuml
+@startuml
+skinparam classAttributeIconSize 0
+skinparam Shadowing false
+
+abstract class BaseDeDatos {
+  # connection_uri: str
+  + {abstract} connect()
+  + {abstract} test_connection(): bool
+  + {abstract} get_schema(): dict
+  + {abstract} fetch_records(table: str, limit: int): list
+  + {abstract} apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class PostgresClient extends BaseDeDatos {
+  + connect()
+  + test_connection(): bool
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class MongoClient extends BaseDeDatos {
+  + connect()
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class Neo4jClient extends BaseDeDatos {
+  + connect()
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class DatabaseFactory {
+  + {static} get_client(conn: Connection): BaseDeDatos
+}
+
+class MaskingService {
+  - strategies: dict
+  + mask_value(val: any, strat: str, mode: str, opts: dict): any
+}
+
+interface MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class HashingStrategy implements MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class RedactionStrategy implements MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class SubstitutionStrategy implements MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class JobOrchestrator {
+  - conn_service: ConnectionService
+  - masking_service: MaskingService
+  + create_and_execute_job(conn_id: str, mode: str, rules: list): JobResult
+  + rollback_job(job_id: str): dict
+}
+
+DatabaseFactory ..> BaseDeDatos : "instancia"
+JobOrchestrator --> DatabaseFactory : "usa"
+JobOrchestrator --> MaskingService : "delega en"
+MaskingService "1" *-- "*" MaskingStrategy : "contiene"
+@enduml
 ```
 
 #### 3.2.6. Diagrama de Base de datos (relacional y no relacional)
 
-**Modelo Relacional — SQLite (Base de datos interna del sistema)**
+##### Modelo Lógico de Metadatos (SQLite / MongoDB / PostgreSQL)
 
+Representa las tablas que soportan el funcionamiento interno del sistema (usuarios, conexiones configuradas, reglas y auditoría).
+
+```plantuml
+@startuml
+skinparam linetype ortho
+skinparam Shadowing false
+
+entity "User" as user {
+  * id : UUID <<PK>>
+  --
+  * full_name : str
+  * email : str <<UNIQUE>>
+  * password_hash : str
+  * role : str (admin / user)
+  * provider : str (local / google)
+  * created_at : datetime
+}
+
+entity "Connection" as conn {
+  * id : UUID <<PK>>
+  --
+  * name : str
+  * database_type : DatabaseType <<Enum>>
+  * host : str
+  * port : int
+  * database : str
+  * username : str
+  * password_encrypted : str
+  * is_active : bool
+  * created_by : UUID <<FK>>
+  * created_at : datetime
+}
+
+entity "MaskingRule" as rule {
+  * id : UUID <<PK>>
+  --
+  * connection_id : UUID <<FK>>
+  * target_table : str
+  * target_column : str
+  * algorithm : MaskingAlgorithm <<Enum>>
+  * protection_mode : ProtectionMode <<Enum>>
+  * strategy_options : json
+  * created_at : datetime
+}
+
+entity "MaskingJob" as job {
+  * id : UUID <<PK>>
+  --
+  * connection_id : UUID <<FK>>
+  * run_mode : MaskingRunMode <<Enum>>
+  * status : JobStatus <<Enum>>
+  * records_processed : int
+  * artifacts_generated : json (views, columns, backups)
+  * execution_time_ms : float
+  * error_message : str
+  * created_by : UUID <<FK>>
+  * created_at : datetime
+}
+
+entity "AuditLog" as audit {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * action : str
+  * entity_type : str
+  * entity_id : UUID
+  * details : json
+  * ip_address : str
+  * timestamp : datetime
+}
+
+user "1" --o{ conn : "registra"
+conn "1" --o{ rule : "tiene"
+conn "1" --o{ job : "ejecuta en"
+user "1" --o{ job : "inicia"
+user "1" --o{ audit : "genera"
+@enduml
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│            Diagrama de Base de Datos — SQLite Interno                    │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────┐         ┌─────────────────────────┐        │
-│  │         users            │         │        metrics           │        │
-│  ├─────────────────────────┤         ├─────────────────────────┤        │
-│  │ id INTEGER PK            │         │ id INTEGER PK            │        │
-│  │ nombre_completo TEXT     │         │ motor_utilizado TEXT     │        │
-│  │ correo TEXT UNIQUE       │         │ masking_mode TEXT        │        │
-│  │ password_hash TEXT       │         │ tiempo_normal_ms REAL    │        │
-│  │ proveedor TEXT           │         │ tiempo_masked_ms REAL    │        │
-│  │ fecha_creacion DATETIME  │         │ tiempo_encrypted_ms REAL │        │
-│  └─────────────────────────┘         │ latency_delta_ms REAL    │        │
-│                                       │ cpu_overhead REAL        │        │
-│  ┌─────────────────────────┐         │ tiempo_bd_ms REAL        │        │
-│  │     system_metrics       │         │ tiempo_mask_ms REAL      │        │
-│  ├─────────────────────────┤         │ overhead_total_ms REAL   │        │
-│  │ id INTEGER PK            │         │ filas_procesadas INT     │        │
-│  │ cpu_percent REAL         │         │ timestamp DATETIME       │        │
-│  │ ram_used_mb REAL         │         └─────────────────────────┘        │
-│  │ ram_total_mb REAL        │                                             │
-│  │ disk_used_gb REAL        │         ┌─────────────────────────┐        │
-│  │ disk_total_gb REAL       │         │    db_health             │        │
-│  │ uptime_seconds REAL      │         ├─────────────────────────┤        │
-│  │ timestamp DATETIME       │         │ id INTEGER PK            │        │
-│  └─────────────────────────┘         │ motor TEXT               │        │
-│                                       │ status TEXT              │        │
-│  ┌─────────────────────────┐         │ latency_ms REAL          │        │
-│  │    service_health        │         │ error TEXT               │        │
-│  ├─────────────────────────┤         │ timestamp DATETIME       │        │
-│  │ id INTEGER PK            │         └─────────────────────────┘        │
-│  │ service_name TEXT        │                                             │
-│  │ status TEXT              │         ┌─────────────────────────┐        │
-│  │ response_time_ms REAL    │         │  algorithm_metrics       │        │
-│  │ timestamp DATETIME       │         ├─────────────────────────┤        │
-│  └─────────────────────────┘         │ id INTEGER PK            │        │
-│                                       │ algorithm_name TEXT      │        │
-│  ┌─────────────────────────┐         │ avg_time_ms REAL         │        │
-│  │     system_errors        │         │ min_time_ms REAL         │        │
-│  ├─────────────────────────┤         │ max_time_ms REAL         │        │
-│  │ id INTEGER PK            │         │ total_executions INT     │        │
-│  │ service TEXT              │         │ timestamp DATETIME       │        │
-│  │ error_type TEXT           │         └─────────────────────────┘        │
-│  │ message TEXT              │                                             │
-│  │ timestamp DATETIME       │                                             │
-│  └─────────────────────────┘                                             │
-│                                                                           │
-│  MODELO NoSQL — MongoDB (Motor destino de ejemplo)                       │
-│  ┌──────────────────────────────────────────────────────────────┐        │
-│  │  Colección: clientes                                         │        │
-│  │  {                                                           │        │
-│  │    "_id": ObjectId("..."),                                   │        │
-│  │    "nombre": "Eduardo Flores",     ← enmascarable            │        │
-│  │    "email": "edu@mail.com",        ← enmascarable            │        │
-│  │    "dni": "12345678",              ← enmascarable            │        │
-│  │    "telefono": "987654321",        ← enmascarable            │        │
-│  │    "direccion": "Av. Ejemplo 123"  ← enmascarable            │        │
-│  │  }                                                           │        │
-│  └──────────────────────────────────────────────────────────────┘        │
-│                                                                           │
-│  MODELO Grafo — Neo4j (Motor destino de ejemplo)                        │
-│  ┌──────────────────────────────────────────────────────────────┐        │
-│  │  (:Persona {nombre: "Eduardo", dni: "12345678"})             │        │
-│  │    -[:TRABAJA_EN]->(:Empresa {razon: "SecOps SAC"})          │        │
-│  └──────────────────────────────────────────────────────────────┘        │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+
+##### Modelos de Datos en Motores Externos (Destinos de Ejemplo)
+
+- **MongoDB (Colección NoSQL):** Soportado mediante mapeo de objetos planos de BSON.
+  ```json
+  {
+    "_id": "64b1f45c8f2a4f001a2b3c4d",
+    "nombre": "Eduardo Flores",
+    "email": "edu@mail.com",
+    "dni": "12345678",
+    "dni_masked": "1234****",
+    "telefono": "+51 987654321"
+  }
+  ```
+
+- **Neo4j (Modelo de Grafos):** Soportado a nivel de propiedades del Label.
+  ```text
+  (:Persona {nombre: "Eduardo", dni: "12345678", dni_masked: "1234****"}) -[:TRABAJA_EN]-> (:Empresa {razon_social: "SecOps SAC"})
+  ```
 
 ---
 
 ### 3.3. Vista de Implementación (vista de desarrollo)
 
+La vista de desarrollo muestra la organización del código fuente en módulos físicos y sus dependencias.
+
 #### 3.3.1. Diagrama de arquitectura software (paquetes)
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│         Diagrama de Arquitectura Software — Estructura de Paquetes       │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    enmask-v2.0/                                  │    │
-│  │                                                                  │    │
-│  │  ┌──────────────────┐  ┌──────────────────┐                    │    │
-│  │  │    main.py        │  │   config.py       │                    │    │
-│  │  │  (API Gateway)    │  │  (Settings)       │                    │    │
-│  │  │  FastAPI app      │  │  Pydantic Base    │                    │    │
-│  │  │  Endpoints REST   │  │  .env loader      │                    │    │
-│  │  └────────┬─────────┘  └──────────────────┘                    │    │
-│  │           │                                                      │    │
-│  │  ┌────────▼─────────────────────────────────────────────────┐   │    │
-│  │  │                 <<módulos de servicio>>                    │   │    │
-│  │  │                                                           │   │    │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │   │    │
-│  │  │  │   auth.py    │ │ db_usuarios.py│ │ oauth_google.py  │ │   │    │
-│  │  │  │ (sesiones)   │ │ (CRUD users) │ │ (Google OAuth2)  │ │   │    │
-│  │  │  └──────────────┘ └──────────────┘ └──────────────────┘ │   │    │
-│  │  │                                                           │   │    │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │   │    │
-│  │  │  │database_     │ │database_     │ │ encryption_      │ │   │    │
-│  │  │  │manager.py    │ │health.py     │ │ service.py       │ │   │    │
-│  │  │  │(Factory)     │ │(health check)│ │ (Fernet encrypt) │ │   │    │
-│  │  │  └──────────────┘ └──────────────┘ └──────────────────┘ │   │    │
-│  │  │                                                           │   │    │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │   │    │
-│  │  │  │  masking.py   │ │ masking_     │ │   key_manager.py │ │   │    │
-│  │  │  │ (Engine)      │ │ service.py   │ │ (clave Fernet)   │ │   │    │
-│  │  │  └──────────────┘ └──────────────┘ └──────────────────┘ │   │    │
-│  │  │                                                           │   │    │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │   │    │
-│  │  │  │ governance.py │ │ monitor_     │ │  monitor.py      │ │   │    │
-│  │  │  │ (SDM logic)   │ │ service.py   │ │ (overhead calc)  │ │   │    │
-│  │  │  └──────────────┘ └──────────────┘ └──────────────────┘ │   │    │
-│  │  │                                                           │   │    │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │   │    │
-│  │  │  │health_       │ │system_       │ │ service_         │ │   │    │
-│  │  │  │monitor.py    │ │metrics.py    │ │ checker.py       │ │   │    │
-│  │  │  └──────────────┘ └──────────────┘ └──────────────────┘ │   │    │
-│  │  └───────────────────────────────────────────────────────────┘   │    │
-│  │                                                                  │    │
-│  │  ┌──────────────────┐  ┌──────────────────┐                    │    │
-│  │  │    seeder.py      │  │    deploy.ps1     │                    │    │
-│  │  │ (datos de prueba) │  │ (script despliegue)│                   │    │
-│  │  └──────────────────┘  └──────────────────┘                    │    │
-│  │                                                                  │    │
-│  │  ┌──────────────────────────────────────────────────────────┐   │    │
-│  │  │                    static/                                 │   │    │
-│  │  │  ┌──────────────┐  ┌──────────────┐                      │   │    │
-│  │  │  │ login.html    │  │  index.html   │                      │   │    │
-│  │  │  └──────────────┘  └──────────────┘                      │   │    │
-│  │  └──────────────────────────────────────────────────────────┘   │    │
-│  │                                                                  │    │
-│  │  ┌──────────────────┐  ┌──────────────────┐                    │    │
-│  │  │ Dockerfile        │  │ docker-compose.yml│                   │    │
-│  │  │ render.yaml       │  │ requirements.txt  │                   │    │
-│  │  │ .env.example      │  │ .gitignore        │                   │    │
-│  │  └──────────────────┘  └──────────────────┘                    │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────┘
+El siguiente diagrama representa la jerarquía física y distribución de componentes dentro del repositorio.
+
+```plantuml
+@startuml
+skinparam Shadowing false
+
+package "proyecto-enmask" {
+  package "frontend" {
+    folder "src" as FE_src {
+      folder "pages" as FE_pages
+      folder "components" as FE_comps
+      folder "services" as FE_svcs
+      file "App.tsx" as FE_app
+      file "main.tsx" as FE_main
+      file "index.css" as FE_css
+    }
+    file "package.json" as FE_pkg
+    file "vite.config.ts" as FE_vite
+  }
+  
+  package "backend" {
+    folder "app" as BE_app {
+      folder "api" as BE_api {
+        file "routers/*" as BE_routers
+      }
+      folder "application" as BE_appl {
+        file "services/*" as BE_svcs
+      }
+      folder "domain" as BE_dom {
+        file "entities/*" as BE_ents
+        file "interfaces/*" as BE_intfs
+        file "value_objects/*" as BE_vos
+      }
+      folder "infrastructure" as BE_infra {
+        folder "db" as BE_db_clients {
+          file "factory.py" as BE_fact
+          file "*_client.py" as BE_clients
+        }
+        folder "masking" as BE_mask_strat {
+          file "strategies.py" as BE_strats
+        }
+      }
+      file "main.py" as BE_main_py
+    }
+    file "requirements.txt" as BE_reqs
+    file ".env.example" as BE_env
+  }
+
+  package "integrations" {
+    folder "mcp" as Int_mcp {
+      folder "enmask-mcp-server" as MCP_srv
+    }
+    folder "vscode" as Int_vs {
+      folder "enmask-vscode" as VS_ext
+    }
+    folder "skills" as Int_skills {
+      file "skill.zip" as Skill_zips
+    }
+  }
+}
+@enduml
 ```
 
-#### 3.3.2. Diagrama de arquitectura del sistema (Diagrama de componentes)
+#### 3.3.2. Diagrama de arquitectura del sistema (componentes)
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│           Diagrama de Componentes — Arquitectura de Microservicios       │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    <<navegador del usuario>>                     │    │
-│  │                    Chrome / Firefox / Edge                       │    │
-│  └───────────────────────────┬─────────────────────────────────────┘    │
-│                              │ HTTP/HTTPS                                 │
-│                              ▼                                            │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │              <<contenedor: secops-api>>                           │    │
-│  │              Puerto: 8000                                         │    │
-│  │                                                                  │    │
-│  │  ┌────────────────────────────────────────────────────────┐     │    │
-│  │  │                    main.py                               │     │    │
-│  │  │           FastAPI + SessionMiddleware                    │     │    │
-│  │  │                                                          │     │    │
-│  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ │     │    │
-│  │  │  │Auth Endp.│ │Conn Endp.│ │Benchmark │ │Monitor    │ │     │    │
-│  │  │  │/login    │ │/connect  │ │/execute  │ │/system    │ │     │    │
-│  │  │  │/register │ │/connections│ /test   │ │/services  │ │     │    │
-│  │  │  │/logout   │ │/schema   │ │          │ │/databases │ │     │    │
-│  │  │  └──────────┘ └──────────┘ └──────────┘ └───────────┘ │     │    │
-│  │  └────────────────────────────────────────────────────────┘     │    │
-│  │                                                                  │    │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐      │    │
-│  │  │ auth.py       │  │database_mgr.py│ │ db_usuarios.py   │      │    │
-│  │  │ (sesiones)    │  │(Factory+8 DB)│ │ (users SQLite)   │      │    │
-│  │  └──────────────┘  └──────────────┘  └──────────────────┘      │    │
-│  └──────┬──────────────────────────┬───────────────────────────────┘    │
-│         │ HTTP                       │ HTTP                               │
-│         ▼                            ▼                                    │
-│  ┌──────────────────────┐  ┌──────────────────────┐                     │
-│  │<<contenedor:          │  │<<contenedor:          │                     │
-│  │ secops-masking>>      │  │ secops-monitor>>      │                     │
-│  │ Puerto: 8001          │  │ Puerto: 8002          │                     │
-│  │                       │  │                       │                     │
-│  │ masking_service.py    │  │ monitor_service.py    │                     │
-│  │ FastAPI               │  │ FastAPI               │                     │
-│  │                       │  │                       │                     │
-│  │ ┌───────────────────┐│  │ ┌───────────────────┐│                     │
-│  │ │ masking.py        ││  │ │ system_metrics.py ││                     │
-│  │ │ (4 algoritmos)    ││  │ │ (psutil)          ││                     │
-│  │ ├───────────────────┤│  │ ├───────────────────┤│                     │
-│  │ │ encryption_svc.py ││  │ │ service_checker.py││                     │
-│  │ │ (Fernet)          ││  │ │ (HTTP health)     ││                     │
-│  │ ├───────────────────┤│  │ ├───────────────────┤│                     │
-│  │ │ governance.py     ││  │ │ health_monitor.py ││                     │
-│  │ │ (SDM protect/     ││  │ │ (orchestrator)    ││                     │
-│  │ │  restore)         ││  │ └───────────────────┘│                     │
-│  │ ├───────────────────┤│  │                       │                     │
-│  │ │ key_manager.py    ││  │ ┌───────────────────┐│                     │
-│  │ │ (Fernet key)      ││  │ │ SQLite            ││                     │
-│  │ └───────────────────┘│  │ │ monitor_metrics.db││                     │
-│  │                       │  │ │ (6 tablas)        ││                     │
-│  │ ┌───────────────────┐│  │ └───────────────────┘│                     │
-│  │ │ .keyfile           ││  │                       │                     │
-│  │ │ (clave Fernet)    ││  └──────────────────────┘                     │
-│  │ └───────────────────┘│                                               │
-│  └──────────────────────┘                                               │
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    <<motores de BD externos>>                     │    │
-│  │                                                                  │    │
-│  │  ┌─────────┐ ┌───────┐ ┌──────────┐ ┌─────────┐ ┌───────────┐ │    │
-│  │  │PostgreSQL│ │ MySQL │ │SQL Server│ │ MongoDB │ │   Redis   │ │    │
-│  │  │ :5432   │ │ :3306 │ │ :1433    │ │ :27017  │ │   :6379   │ │    │
-│  │  └─────────┘ └───────┘ └──────────┘ └─────────┘ └───────────┘ │    │
-│  │  ┌─────────┐ ┌───────┐                                          │    │
-│  │  │  Neo4j  │ │ SQLite│                                          │    │
-│  │  │ :7687   │ │ (file)│                                          │    │
-│  │  └─────────┘ └───────┘                                          │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  PROTOCOLOS DE COMUNICACIÓN:                                              │
-│  • Navegador ↔ secops-api: HTTP/REST (JSON) + Cookies                   │
-│  • secops-api ↔ secops-masking: HTTP/REST (JSON) via httpx              │
-│  • secops-api ↔ secops-monitor: HTTP/REST (JSON) via httpx              │
-│  • secops-masking ↔ Motores BD: Drivers nativos (psycopg2, pymysql...)  │
-│  • secops-monitor ↔ SQLite: sqlite3 (local)                             │
-└─────────────────────────────────────────────────────────────────────────┘
+Muestra los componentes del sistema en ejecución y cómo se comunican de forma desacoplada mediante protocolos definidos.
+
+```plantuml
+@startuml
+skinparam componentStyle uml2
+skinparam Shadowing false
+
+[React SPA Frontend] as FE
+[FastAPI Monolithic Backend] as BE
+
+package "Componentes Internos del Backend" {
+  [API Router Gateway] as Router
+  [Auth Service] as AuthSvc
+  [Connection Service] as ConnSvc
+  [Job Orchestrator] as JobOrch
+  [Masking Core Service] as MaskSvc
+  [Database Factory] as DBFactory
+  [Native DB Connectors] as DBConnectors
+  [Vault Backup System] as Vault
+}
+
+database "Metadata Repository\n(Memory / MongoDB / Postgres)" as MetaDB
+
+FE --> Router : HTTP REST / JSON
+Router --> AuthSvc
+Router --> ConnSvc
+Router --> JobOrch
+Router --> MaskSvc
+
+AuthSvc --> MetaDB : Persistencia de Usuarios y Sesiones
+ConnSvc --> MetaDB : Persistencia de Metadatos de Conexiones
+JobOrch --> MetaDB : Persistencia de Jobs y Auditoría
+
+JobOrch --> DBFactory : get_client()
+DBFactory --> DBConnectors : Instancia conectores
+JobOrch --> MaskSvc : mask_value()
+MaskSvc --> Vault : Almacena backups de originales
+
+database "External DB Targets\n(PostgreSQL, MySQL, SQLServer, SQLite,\nOracle, Cassandra, MongoDB, Redis, Neo4j)" as Targets
+
+DBConnectors --> Targets : Read / Write (TCP / Native Protocol)
+@enduml
 ```
 
 ---
 
 ### 3.4. Vista de Procesos
 
+La vista de procesos aborda la concurrencia, sincronización de hilos y el flujo dinámico de ejecución de tareas críticas en el sistema.
+
 #### 3.4.1. Diagrama de Procesos del sistema (diagrama de actividad)
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│           Diagrama de Procesos — Flujo Principal del Sistema             │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌──────────────┐                                                        │
-│  │   INICIO      │                                                        │
-│  └──────┬───────┘                                                        │
-│         ▼                                                                 │
-│  ╔════════════════╗                                                       │
-│  ║  PROCESO 1:    ║                                                       │
-│  ║  Autenticación ║                                                       │
-│  ╚════════╤═══════╝                                                       │
-│           ▼                                                               │
-│  ┌──────────────────┐   ┌──────────────────┐                             │
-│  │ ¿Tiene cuenta?   │──►│ Login            │                             │
-│  │                  │   │ (email + bcrypt) │                             │
-│  └────────┬─────────┘   └────────┬─────────┘                             │
-│           │ NO                   │                                        │
-│           ▼                      ▼                                        │
-│  ┌──────────────────┐   ┌──────────────────┐                             │
-│  │ Registro         │   │ ¿Credenciales    │                             │
-│  │ (nombre, correo, │   │  válidas?        │                             │
-│  │  password)       │   └────────┬─────────┘                             │
-│  └────────┬─────────┘            │ SÍ                                    │
-│           │                      ▼                                        │
-│           │              ┌──────────────────┐                             │
-│           └─────────────►│ Crear token      │                             │
-│                          │ de sesión        │                             │
-│                          └────────┬─────────┘                             │
-│                                   ▼                                       │
-│  ╔════════════════╗                                                       │
-│  ║  PROCESO 2:    ║                                                       │
-│  ║  Conexión a BD ║                                                       │
-│  ╚════════╤═══════╝                                                       │
-│           ▼                                                               │
-│  ┌──────────────────┐                                                    │
-│  │ Seleccionar motor│                                                    │
-│  │ (postgres/mysql/ │                                                    │
-│  │  sqlite/mongodb/ │                                                    │
-│  │  redis/neo4j/    │                                                    │
-│  │  sqlserver)      │                                                    │
-│  └────────┬─────────┘                                                    │
-│           ▼                                                               │
-│  ┌──────────────────┐    ┌──────────────────┐                            │
-│  │ DatabaseFactory  │───►│ Probar conexión  │                            │
-│  │ .obtener_motor() │    │ (conectar())     │                            │
-│  └──────────────────┘    └────────┬─────────┘                            │
-│                                   ▼                                       │
-│                          ┌──────────────────┐                             │
-│                          │ Obtener esquema  │                             │
-│                          │ (tablas/columnas)│                             │
-│                          └────────┬─────────┘                             │
-│                                   ▼                                       │
-│                          ┌──────────────────┐                             │
-│                          │ Almacenar en     │                             │
-│                          │ sesión (UUID)    │                             │
-│                          └────────┬─────────┘                             │
-│                                   ▼                                       │
-│  ╔══════════════════════╗                                                 │
-│  ║  PROCESO 3:          ║                                                 │
-│  ║  Benchmark / SDM     ║                                                 │
-│  ╚════════╤═════════════╝                                                 │
-│           ▼                                                               │
-│  ┌──────────────────┐                                                    │
-│  │ Seleccionar tabla│                                                    │
-│  │ + reglas         │                                                    │
-│  │ {col: algoritmo} │                                                    │
-│  └────────┬─────────┘                                                    │
-│           ▼                                                               │
-│  ┌──────────────────┐                                                    │
-│  │ ¿Tipo de operación?│                                                  │
-│  └───┬──────┬───────┘                                                    │
-│      │      │                                                             │
-│  Benchmark  SDM                                                           │
-│      │      │                                                             │
-│      ▼      ▼                                                             │
-│  ┌──────┐ ┌──────────────────┐                                          │
-│  │      │ │ Crear backup     │                                          │
-│  │      │ │ cifrado (Fernet) │                                          │
-│  │      │ └────────┬─────────┘                                          │
-│  │      │          ▼                                                      │
-│  │      │ ┌──────────────────┐                                          │
-│  │      │ │ Aplicar masking  │                                          │
-│  │      │ │ permanente       │                                          │
-│  │      │ └────────┬─────────┘                                          │
-│  │      │          │                                                      │
-│  │      ▼          ▼                                                      │
-│  │  ┌──────────────────┐    ┌──────────────────┐                        │
-│  │  │ Consulta cruda   │───►│ Aplicar masking  │                        │
-│  │  │ t_normal = perf()│    │ t_mask = perf()  │                        │
-│  │  └──────────────────┘    └────────┬─────────┘                        │
-│  │                                   ▼                                    │
-│  │                          ┌──────────────────┐                         │
-│  │                          │ Cifrar (Fernet)  │                         │
-│  │                          │ t_encrypt = perf()│                        │
-│  │                          └────────┬─────────┘                         │
-│  │                                   ▼                                    │
-│  │                          ┌──────────────────┐                         │
-│  │                          │ Calcular overhead│                         │
-│  │                          │ total_ms         │                         │
-│  │                          └────────┬─────────┘                         │
-│  └───────────────────────────────────┘                                    │
-│                                   ▼                                       │
-│  ╔════════════════╗     ╔════════════════════╗                           │
-│  ║  PROCESO 4:    ║     ║  PROCESO 5:        ║                           │
-│  ║  Almacenar     ║     ║  Visualizar        ║                           │
-│  ║  Métricas      ║     ║  Resultados        ║                           │
-│  ╚════════╤═══════╝     ╚════════╤═══════════╝                           │
-│           ▼                      ▼                                        │
-│  ┌──────────────────┐   ┌──────────────────┐                             │
-│  │ Monitor Service  │   │ Dashboard        │                             │
-│  │ POST /metrics    │   │ (4 módulos):     │                             │
-│  │ → SQLite         │   │ • Security       │                             │
-│  └──────────────────┘   │ • Health Monitor │                             │
-│                          │ • DB Observatory │                             │
-│                          │ • Algo Analytics │                             │
-│                          └────────┬─────────┘                             │
-│                                   ▼                                       │
-│                          ┌──────────────────┐                             │
-│                          │ Actualización    │                             │
-│                          │ automática 5s    │                             │
-│                          └────────┬─────────┘                             │
-│                                   ▼                                       │
-│                          ┌──────────────────┐                             │
-│                          │       FIN        │                             │
-│                          └──────────────────┘                             │
-└─────────────────────────────────────────────────────────────────────────┘
+El flujo dinámico del proceso desde la autenticación hasta la ejecución de enmascaramiento se representa a continuación:
+
+```plantuml
+@startuml
+skinparam Shadowing false
+start
+:Usuario inicia sesión en Frontend;
+if (¿Autenticación exitosa?) then (sí)
+  :Dashboard cargado (resumen ejecutivo);
+  :Registrar o seleccionar Conexión;
+  :Probar conexión activa;
+  if (¿Conexión exitosa?) then (sí)
+    :Inspeccionar esquema (tablas/campos);
+    :Mapear reglas de enmascaramiento por campo;
+    :Previsualizar enmascaramiento al vuelo (Workbench/WorkbenchService);
+    if (¿Confirmar ejecución?) then (sí)
+      if (¿Modo de Ejecución?) then (DRY_RUN)
+        :Ejecutar benchmark sin alterar la BD;
+        :Medir tiempo de consulta normal, masking y cifrado;
+        :Mostrar muestra enmascarada y tiempos en frontend;
+      else (APPLY)
+        :Crear copia de seguridad en Vault;
+        :Aplicar enmascarado (vista, columna derivada, encriptación);
+        :Registrar logs de auditoría;
+      endif
+    else (no)
+      :Descartar cambios;
+    endif
+  else (no)
+    :Mostrar error de conexión (diagnóstico de drivers/puertos/credenciales);
+  endif
+else (no)
+  :Mostrar error de login;
+fi
+stop
+@enduml
 ```
 
 ---
 
 ### 3.5. Vista de Despliegue (vista física)
 
+La vista física describe la distribución física del sistema en hardware o contenedores de red, incluyendo los protocolos de interconexión.
+
 #### 3.5.1. Diagrama de despliegue
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│              Diagrama de Despliegue — Enmask v2.0                        │
-│              (Entorno Local con Docker Compose)                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    <<nodo: máquina local>>                       │    │
-│  │                    Docker Host (8 GB RAM mínimo)                 │    │
-│  │                                                                  │    │
-│  │  ┌─────────────────────────────────────────────────────────┐    │    │
-│  │  │              <<red: enmask-network>>                      │    │    │
-│  │  │              (bridge Docker)                              │    │    │
-│  │  │                                                          │    │    │
-│  │  │  ┌─────────────────────┐  ┌─────────────────────────┐   │    │    │
-│  │  │  │<<contenedor: api>>  │  │<<contenedor: masking>>   │   │    │    │
-│  │  │  │ main.py             │  │ masking_service.py       │   │    │    │
-│  │  │  │ FastAPI :8000       │  │ FastAPI :8001            │   │    │    │
-│  │  │  │                     │  │                          │   │    │    │
-│  │  │  │ Vol: secops_data    │  │ Vol: .keyfile            │   │    │    │
-│  │  │  └──────────┬──────────┘  └────────────┬─────────────┘   │    │    │
-│  │  │             │                          │                  │    │    │
-│  │  │             │    ┌─────────────────┐   │                  │    │    │
-│  │  │             │    │<<contenedor:     │   │                  │    │    │
-│  │  │             │    │ monitor>>        │   │                  │    │    │
-│  │  │             │    │ monitor_service  │   │                  │    │    │
-│  │  │             │    │ .py :8002        │   │                  │    │    │
-│  │  │             │    │                  │   │                  │    │    │
-│  │  │             │    │ Vol: monitor_data│   │                  │    │    │
-│  │  │             │    └─────────────────┘   │                  │    │    │
-│  │  │             │                          │                  │    │    │
-│  │  │  ┌──────────▼──────────────────────────▼─────────────┐   │    │    │
-│  │  │  │          <<contenedores: motores de BD>>           │   │    │    │
-│  │  │  │                                                    │   │    │    │
-│  │  │  │ ┌────────┐┌──────┐┌────────┐┌───────┐┌────────┐  │   │    │    │
-│  │  │  │ │Postgres││ MySQL││SQLSrvr ││MongoDB││ Redis  │  │   │    │    │
-│  │  │  │ │ :5432  ││ :3306││ :1433  ││:27017 ││ :6379  │  │   │    │    │
-│  │  │  │ └────────┘└──────┘└────────┘└───────┘└────────┘  │   │    │    │
-│  │  │  │ ┌────────┐┌──────┐                                │   │    │    │
-│  │  │  │ │ Neo4j  ││SQLite│                                │   │    │    │
-│  │  │  │ │:7687   ││ (vol)│                                │   │    │    │
-│  │  │  │ └────────┘└──────┘                                │   │    │    │
-│  │  │  └────────────────────────────────────────────────────┘   │    │    │
-│  │  │                                                          │    │    │
-│  │  └──────────────────────────────────────────────────────────┘    │    │
-│  │                                                                  │    │
-│  │  VOLÚMENES DOCKER:                                               │    │
-│  │  • secops_data → usuarios + clave Fernet                        │    │
-│  │  • monitor_data → métricas SQLite                               │    │
-│  │  • pg_data, mysql_data, mssql_data → datos de prueba            │    │
-│  │  • mongo_data, redis_data, neo4j_data → datos de prueba         │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │          <<nodo: Render (nube - plan gratuito)>>                 │    │
-│  │                                                                  │    │
-│  │  ┌─────────────────────┐  ┌─────────────────┐                   │    │
-│  │  │<<servicio:           │  │<<servicio:       │                   │    │
-│  │  │ secops-api>>         │  │ secops-masking>> │                   │    │
-│  │  │ Docker → main.py     │  │ Docker → masking │                   │    │
-│  │  │ :8000                │  │ _service.py      │                   │    │
-│  │  │                      │  │ :8001            │                   │    │
-│  │  │ ENV:                 │  │                  │                   │    │
-│  │  │ MASKING_SERVICE_URL  │  │ ENV:             │                   │    │
-│  │  │ MONITOR_SERVICE_URL  │  │ DATA_DIR         │                   │    │
-│  │  │ SECRET_KEY           │  └─────────────────┘                   │    │
-│  │  │ ADMIN_EMAIL/PASSWORD │                                        │    │
-│  │  └──────────┬──────────┘  ┌─────────────────┐                   │    │
-│  │             │              │<<servicio:       │                   │    │
-│  │             │              │ secops-monitor>> │                   │    │
-│  │             │              │ Docker → monitor │                   │    │
-│  │             │              │ _service.py      │                   │    │
-│  │             │              │ :8002            │                   │    │
-│  │             │              └─────────────────┘                   │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  FLUJO DE DATOS EN DESPLIEGUE:                                           │
-│  1. Usuario → https://secops-api-xxx.onrender.com                       │
-│  2. API Gateway → Masking Service (HTTP interno)                        │
-│  3. API Gateway → Monitor Service (HTTP interno)                        │
-│  4. Masking Service → Motores BD externos (conexión directa)            │
-│  5. Monitor Service → SQLite local (persistencia)                       │
-└─────────────────────────────────────────────────────────────────────────┘
+El despliegue de Enmask v2.0 se realiza típicamente usando contenedores independientes orquestados por Docker Compose en entornos de desarrollo/QA, o a través de servicios de aplicación en la nube (Render).
+
+```plantuml
+@startuml
+skinparam Shadowing false
+
+node "Dispositivo Cliente" as ClientNode {
+  node "Navegador Web" as Browser {
+    artifact "React + Vite SPA\n(HTML5, Tailwind, TS)" as FE_App
+  }
+}
+
+node "Servidor Local / Nube (Docker Host)" as ServerNode {
+  node "Contenedor: enmask-backend" as BackendCont {
+    artifact "FastAPI App\n(Uvicorn)" as BE_App
+  }
+
+  node "Contenedor: metadata-db" as MetaCont {
+    database "MongoDB / PostgreSQL\n(Persistencia de metadatos)" as MetaDB
+  }
+  
+  BE_App --> MetaDB : TCP :27017 / :5432
+}
+
+node "Red Corporativa / Proveedores Cloud" as CloudDBs {
+  database "PostgreSQL (:5432)" as PG
+  database "MySQL / MariaDB (:3306)" as MY
+  database "SQL Server (:1433)" as MS
+  database "MongoDB (:27017)" as MO
+  database "Redis (:6379)" as RE
+  database "Neo4j (:7687)" as NE
+  database "Cassandra (:9042)" as CA
+  database "Oracle (:1521)" as OR
+  database "SQLite (local file)" as SQ
+}
+
+FE_App --> BE_App : HTTPS / REST (:8000)
+BE_App --> PG : asyncpg
+BE_App --> MY : aiomysql
+BE_App --> MS : pymssql
+BE_App --> MO : motor / pymongo
+BE_App --> RE : redis-py
+BE_App --> NE : neo4j-driver
+BE_App --> CA : cassandra-driver
+BE_App --> OR : python-oracledb
+BE_App --> SQ : sqlite3 (local)
+@enduml
 ```
 
 ---
 
 ## 4. ATRIBUTOS DE CALIDAD DEL SOFTWARE
 
-Los atributos de calidad se evalúan mediante escenarios que describen cómo el sistema debe comportarse bajo condiciones específicas.
+Los atributos de calidad se evalúan mediante escenarios estructurados que describen el comportamiento esperado frente a estímulos del entorno.
 
 ### Escenario de Funcionalidad
 
 | Aspecto | Descripción |
 |---|---|
-| **Escenario** | Un usuario autenticado ejecuta un benchmark de enmascaramiento sobre una tabla PostgreSQL con 100 filas, aplicando los 4 algoritmos (redacción, hashing, encriptación, FPE). |
-| **Estímulo** | Solicitud POST /api/v1/execute_test con reglas de enmascaramiento |
-| **Respuesta del sistema** | 1. Consulta cruda a PostgreSQL → mide tiempo_normal_ms. 2. Aplica 4 algoritmos → mide tiempo_mask_ms. 3. Cifra con Fernet → mide tiempo_encrypted_ms. 4. Calcula overhead_total_ms. 5. Envía métricas al Monitor Service. 6. Retorna datos enmascarados + métricas al frontend. |
-| **Medida de calidad** | Los 4 algoritmos se ejecutan correctamente; los datos enmascarados conservan la estructura original; las métricas se almacenan en SQLite. |
-| **Arquitectura implicada** | main.py → masking_service.py → database_manager.py (PostgresDB) → masking.py → monitor_service.py |
+| **Escenario** | Un usuario autenticado ejecuta una previsualización de enmascaramiento en el Workbench. |
+| **Estímulo** | Solicitud POST `/api/v1/workbench/preview` enviando reglas definidas. |
+| **Respuesta del sistema** | El orquestador extrae los registros de la base de datos origen usando el cliente correcto, aplica los algoritmos de enmascaramiento configurados sin guardarlos en la base de datos destino, y devuelve el resultado en menos de 2 segundos. |
+| **Medida de calidad** | Validación visual en el Workbench con los datos correctos ofuscados; no se altera el dato original en este paso. |
+| **Arquitectura implicada** | `workbench.py` (Router) → `WorkbenchService` → `DatabaseFactory` → `MaskingService` → `strategies.py` |
 
 ### Escenario de Usabilidad
 
 | Aspecto | Descripción |
 |---|---|
-| **Escenario** | Un desarrollador sin experiencia en el sistema configura una conexión a MySQL y ejecuta su primer benchmark en menos de 5 minutos. |
-| **Estímulo** | El usuario abre la aplicación por primera vez |
-| **Respuesta del sistema** | 1. Muestra formulario de login intuitivo. 2. Tras login, muestra dashboard con menú lateral. 3. Sección "Conexiones" permite seleccionar motor y credenciales. 4. Al conectar, muestra esquema automáticamente. 5. Sección "Security" permite definir reglas con dropdowns. 6. Botón "Ejecutar" muestra resultados con gráficos. |
-| **Medida de calidad** | Tiempo desde login hasta primer benchmark < 5 minutos sin leer documentación. |
-| **Arquitectura implicada** | static/login.html → static/index.html → API endpoints → database_manager.py |
+| **Escenario** | El usuario necesita configurar un enmascaramiento para una base de datos documental (MongoDB). |
+| **Estímulo** | Selección de MongoDB en la pantalla de "Conexiones" e ingreso de URI. |
+| **Respuesta del sistema** | El sistema valida la estructura de la conexión, extrae las colecciones y muestra un Workbench adaptado a campos JSON de documentos en lugar de columnas tabulares rígidas. |
+| **Medida de calidad** | El usuario finaliza la configuración en 3 clics y obtiene previsualización inmediata. |
+| **Arquitectura implicada** | React UI (`Connections.tsx`) → `ConnectionService` → `MongoClient` |
 
 ### Escenario de Confiabilidad
 
 | Aspecto | Descripción |
 |---|---|
-| **Escenario** | El Masking Service se cae inesperadamente durante una operación de cifrado. |
-| **Estímulo** | Fallo del contenedor masking-service |
-| **Respuesta del sistema** | 1. Docker reinicia automáticamente el contenedor (`restart: unless-stopped`). 2. La API Gateway captura la excepción HTTP (502). 3. Registra el error en Monitor Service (POST /errors). 4. Retorna al usuario un mensaje de error controlado sin exponer detalles internos. 5. Las credenciales de BD y la clave Fernet persisten en volúmenes Docker. |
-| **Medida de calidad** | Recuperación automática < 30 segundos; sin pérdida de datos; sin exposición de información interna. |
-| **Arquitectura implicada** | docker-compose.yml (restart policy) → main.py (exception handler) → monitor_service.py (error log) |
+| **Escenario** | Fallo en la comunicación de red con una base de datos remota a mitad de un Job. |
+| **Estímulo** | Pérdida de socket TCP durante la ejecución del job. |
+| **Respuesta del sistema** | El conector de base de datos correspondiente atrapa el error de red, aborta el job de forma segura, cambia su estado a `FAILED` en los metadatos y guarda el mensaje detallado de error para auditoría sin corromper la consistencia de los datos ya procesados. |
+| **Medida de calidad** | Estado consistente en la base de datos y reporte de fallo con diagnóstico claro en el historial de Jobs. |
+| **Arquitectura implicada** | `job_orchestrator.py` → `BaseDeDatos` (Manejo de excepciones) → `AuditLogRepository` |
 
 ### Escenario de Rendimiento
 
 | Aspecto | Descripción |
 |---|---|
-| **Escenario** | 10 usuarios ejecutan benchmarks simultáneamente sobre diferentes motores de BD. |
-| **Estímulo** | 10 solicitudes POST /api/v1/execute_test concurrentes |
-| **Respuesta del sistema** | 1. FastAPI procesa las solicitudes de forma asíncrona. 2. Cada solicitud se despacha al Masking Service vía httpx (async). 3. El Masking Service procesa cada benchmark independientemente. 4. Las métricas se envían al Monitor Service de forma no bloqueante. |
-| **Medida de calidad** | Tiempo de respuesta p95 < 5 segundos para cada solicitud; sin bloqueos entre usuarios; throughput > 2 req/s. |
-| **Arquitectura implicada** | FastAPI (async) → httpx (async client) → masking_service.py (independiente por request) |
+| **Escenario** | Múltiples peticiones concurrentes de previsualización sobre el backend. |
+| **Estímulo** | 20 peticiones simultáneas desde diferentes clientes. |
+| **Respuesta del sistema** | FastAPI maneja las solicitudes asíncronas de manera concurrente usando el bucle de eventos (`asyncio`), repartiendo la carga de procesamiento sin saturar el hilo principal. |
+| **Medida de calidad** | Tiempo de respuesta promedio menor a 3 segundos; uso de CPU controlado (< 70%). |
+| **Arquitectura implicada** | Uvicorn Server → FastAPI Router → Async Services |
 
 ### Escenario de Mantenibilidad
 
 | Aspecto | Descripción |
 |---|---|
-| **Escenario** | Un desarrollador necesita agregar soporte para un nuevo motor de BD (ej. Cassandra). |
-| **Estímulo** | Requerimiento de extensión del sistema |
-| **Respuesta del sistema** | 1. Crear clase `CassandraDB` que extienda `BaseDeDatos`. 2. Implementar `conectar()`, `obtener_esquema()`, `ejecutar_consulta()`. 3. Agregar entrada en `DatabaseFactory.motores`. 4. No modificar ningún otro módulo del sistema. |
-| **Medida de calidad** | Solo se modifica 1 archivo (database_manager.py); el cambio no afecta a los demás módulos; pruebas existentes siguen pasando. |
-| **Arquitectura implicada** | database_manager.py (Factory Pattern + herencia) |
-
-### Otros Escenarios
-
-**Escenario de Portabilidad:**
-
-| Aspecto | Descripción |
-|---|---|
-| **Escenario** | Desplegar el sistema completo en Render desde GitHub con un solo clic. |
-| **Estímulo** | Push a rama main + Blueprint en Render |
-| **Respuesta** | Render lee render.yaml → crea 3 servicios Docker → construye imágenes → levanta contenedores → configura variables de entorno automáticamente. |
-| **Medida** | Deploy completo < 15 minutos; los 3 servicios quedan en estado "Live". |
-
-**Escenario de Seguridad:**
-
-| Aspecto | Descripción |
-|---|---|
-| **Escenario** | Un usuario no autenticado intenta acceder a /api/v1/execute_test. |
-| **Estímulo** | GET/POST sin cookie session_token |
-| **Respuesta** | 1. `obtener_sesion_actual()` verifica la cookie. 2. Si no existe o está revocada → HTTP 401. 3. No se ejecuta ninguna operación de BD. |
-| **Medida** | 100% de solicitudes no autenticadas son rechazadas. |
-
-**Escenario de Escalabilidad:**
-
-| Aspecto | Descripción |
-|---|---|
-| **Escenario** | El volumen de métricas almacenadas crece a 1 millón de registros en SQLite. |
-| **Estímulo** | Acumulación de registros en tabla metrics |
-| **Respuesta** | El Monitor Service persiste en SQLite local; el crecimiento es lineal; se puede implementar política de retención (purga automática > 90 días). |
-| **Medida** | Consultas de métricas < 2s incluso con 1M de registros (índices en timestamp). |
+| **Escenario** | Se requiere agregar un nuevo algoritmo de enmascaramiento por requerimiento regulatorio. |
+| **Estímulo** | Modificación del código fuente para añadir el algoritmo. |
+| **Respuesta del sistema** | El desarrollador crea una nueva clase en `strategies.py` implementando la interfaz `MaskingStrategy` y la registra en el diccionario de estrategias del `MaskingService`. No se requiere modificar el orquestador principal. |
+| **Medida de calidad** | Tiempo de desarrollo < 1 hora; cero cambios en la lógica de control del orquestador. |
+| **Arquitectura implicada** | `strategies.py` (Strategy Pattern) → `MaskingService` |
 
 ---
 
 *Documento FD04 — Diseño de Arquitectura Software*
 *Sistema Enmask v2.0 — Multi-DB Masking & Performance Overhead Monitor*
-*Versión 1.0 — Junio 2026*
+*Versión 2.0 — Julio 2026*
