@@ -117,13 +117,11 @@ Los drivers para los distintos motores de BD están disponibles y probados en lo
 ## 4.2 Factibilidad Económica
 
 ```mermaid
-barChart
-    title Proyección de Costos vs Ahorros (Primer Año)
-    x-axis Meses
-    y-axis Miles USD
-    "Inversión Inicial" : 15
-    "Costos Operativos" : 5
-    "Ahorro Estimado" : 25
+xychart-beta
+    title "Proyección de Costos vs Ahorros (Primer Año)"
+    x-axis ["Inversión Inicial", "Costos Operativos", "Ahorro Estimado"]
+    y-axis "Miles USD" 0 --> 30
+    bar [15, 5, 25]
 ```
 
 ### Conclusión sobre la Factibilidad Económica
