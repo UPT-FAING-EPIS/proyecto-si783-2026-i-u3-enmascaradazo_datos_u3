@@ -1,0 +1,71 @@
+@startuml
+autonumber
+skinparam Shadowing false
+
+actor "Usuario QA / Dev / DBA" as User
+participant "React Frontend (UI)" as FE
+participant "FastAPI API Router (jobs)" as API
+participant "JobOrchestrator" as Orch
+participant "DatabaseFactory" as Factory
+participant "DB Client" as Client
+database "Target Database" as TargetDB
+participant "Performance Monitor" as Monitor
+database "SQLite Metrics DB" as MetricsDB
+
+User -> FE : Solicita ejecución de Benchmark (Job Dry-Run)
+FE -> API : POST /api/v1/jobs/\n{connection_id, rules, mode: "DRY_RUN"}
+activate API
+
+API -> Orch : execute_job(conn_id, "DRY_RUN", rules)
+activate Orch
+
+Orch -> Factory : get_client(conn_id)
+activate Factory
+Factory --> Orch : DB Client instance (e.g., PostgresClient)
+deactivate Factory
+
+Orch -> Monitor : start_timer("total_duration")
+activate Monitor
+deactivate Monitor
+
+Orch -> Client : fetch_records(table, limit)
+activate Client
+Client -> TargetDB : SELECT query (ejecución original)
+activate TargetDB
+TargetDB --> Client : Raw records
+deactivate TargetDB
+Client --> Orch : List of records
+deactivate Client
+
+Orch -> Monitor : measure_step("read_time")
+activate Monitor
+deactivate Monitor
+
+Orch -> Orch : apply_masking_strategies(records, rules)
+note right
+  Aplica hashing, substitution,
+  perturbation en memoria
+end note
+
+Orch -> Monitor : measure_step("masking_time")
+activate Monitor
+deactivate Monitor
+
+Orch --> API : JobResult { status: "COMPLETED", mode: "DRY_RUN", metrics }
+deactivate Orch
+
+API -> Monitor : get_metrics_summary()
+activate Monitor
+Monitor --> API : MetricsSummary { read_time, masking_time, total_time }
+deactivate Monitor
+
+API -> MetricsDB : Save metrics (connection_id, total_time, etc.)
+activate MetricsDB
+MetricsDB --> API : OK
+deactivate MetricsDB
+
+API --> FE : HTTP 200 { job_id, status: "COMPLETED", preview_data, metrics }
+deactivate API
+
+FE --> User : Muestra tabla comparativa y gráficos de performance (Overhead)
+@enduml

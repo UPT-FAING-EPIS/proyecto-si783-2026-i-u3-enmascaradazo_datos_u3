@@ -1,0 +1,58 @@
+@startuml
+skinparam Shadowing false
+
+package "proyecto-enmask" {
+  package "frontend" {
+    folder "src" as FE_src {
+      folder "pages" as FE_pages
+      folder "components" as FE_comps
+      folder "services" as FE_svcs
+      file "App.tsx" as FE_app
+      file "main.tsx" as FE_main
+      file "index.css" as FE_css
+    }
+    file "package.json" as FE_pkg
+    file "vite.config.ts" as FE_vite
+  }
+  
+  package "backend" {
+    folder "app" as BE_app {
+      folder "api" as BE_api {
+        file "routers/*" as BE_routers
+      }
+      folder "application" as BE_appl {
+        file "services/*" as BE_svcs
+      }
+      folder "domain" as BE_dom {
+        file "entities/*" as BE_ents
+        file "interfaces/*" as BE_intfs
+        file "value_objects/*" as BE_vos
+      }
+      folder "infrastructure" as BE_infra {
+        folder "db" as BE_db_clients {
+          file "factory.py" as BE_fact
+          file "*_client.py" as BE_clients
+        }
+        folder "masking" as BE_mask_strat {
+          file "strategies.py" as BE_strats
+        }
+      }
+      file "main.py" as BE_main_py
+    }
+    file "requirements.txt" as BE_reqs
+    file ".env.example" as BE_env
+  }
+
+  package "integrations" {
+    folder "mcp" as Int_mcp {
+      folder "enmask-mcp-server" as MCP_srv
+    }
+    folder "vscode" as Int_vs {
+      folder "enmask-vscode" as VS_ext
+    }
+    folder "skills" as Int_skills {
+      file "skill.zip" as Skill_zips
+    }
+  }
+}
+@enduml

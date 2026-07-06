@@ -1,0 +1,79 @@
+@startuml
+skinparam Shadowing false
+skinparam packageStyle rect
+
+package "Capa Presentación" {
+  [React pages (Admin, Connections, Workbench, DataProtection, Jobs)] as UI
+  [API Client (api.ts)] as ApiClient
+  UI --> ApiClient
+}
+
+package "Capa API Gateway (FastAPI Backend)" {
+  [main.py] as Main
+  [Routers (auth, connections, jobs, reports, rules, workbench)] as Routers
+  ApiClient --> Main : HTTP/JSON
+  Main --> Routers
+}
+
+package "Capa Dominio / Aplicación" {
+  [Auth Service] as AuthService
+  [Connection Service] as ConnService
+  [Job Orchestrator] as JobOrch
+  [Masking Service] as MaskService
+  [Workbench Service] as WorkbenchService
+  
+  Routers --> AuthService
+  Routers --> ConnService
+  Routers --> JobOrch
+  Routers --> WorkbenchService
+  
+  JobOrch --> MaskService
+}
+
+package "Capa Infraestructura / Datos" {
+  [DatabaseFactory] as DbFactory
+  [Database Clients (Postgres, Mongo, Neo4j, etc)] as DbClients
+  [Masking Strategies (strategies.py)] as MaskStrats
+  [Repositories (user_repo, job_repo, connection_repo)] as Repos
+  [Vault Repository (vault_repo.py)] as Vault
+  
+  ConnService --> DbFactory
+  WorkbenchService --> DbFactory
+  JobOrch --> DbFactory
+  DbFactory --> DbClients
+  MaskService --> MaskStrats
+  MaskService --> Vault
+  AuthService --> Repos
+  ConnService --> Repos
+  JobOrch --> Repos
+}
+
+database "Metadata Stores" {
+  [MongoDB (User, Connection, Jobs)] as MongoStore
+  [PostgreSQL (Relational Store)] as PostgresStore
+  Repos --> MongoStore
+  Repos --> PostgresStore
+}
+
+database "Motores de Bases de Datos Destino" {
+  [PostgreSQL] as PG
+  [MySQL] as MY
+  [SQL Server] as SS
+  [MongoDB] as MDB
+  [Redis] as RD
+  [Cassandra] as CS
+  [Neo4j] as N4J
+  [Oracle] as OR
+  [SQLite] as SL
+  
+  DbClients --> PG
+  DbClients --> MY
+  DbClients --> SS
+  DbClients --> MDB
+  DbClients --> RD
+  DbClients --> CS
+  DbClients --> N4J
+  DbClients --> OR
+  DbClients --> SL
+}
+@enduml

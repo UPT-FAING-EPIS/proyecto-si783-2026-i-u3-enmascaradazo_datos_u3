@@ -1,0 +1,65 @@
+name: "Auto-Generate PlantUML Diagrams"
+
+on:
+  push:
+    paths:
+      - 'docs/**/*.puml'
+      - 'docs/**/*.plantuml'
+      - '.github/workflows/plantuml.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Compile PlantUML Diagrams
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── 2. Install Graphviz (needed for complex layout rendering) ─────────
+      - name: Install Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
+
+      # ── 3. Set up Java JDK ───────────────────────────────────────────────
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ── 4. Download PlantUML JAR ─────────────────────────────────────────
+      - name: Download PlantUML JAR
+        run: |
+          mkdir -p bin
+          curl -L -o bin/plantuml.jar https://github.com/plantuml/plantuml/releases/download/v1.2024.3/plantuml-1.2024.3.jar
+
+      # ── 5. Generate PNG Diagrams ─────────────────────────────────────────
+      - name: Generate Diagrams
+        run: |
+          java -jar bin/plantuml.jar -tpng "docs/**/*.puml"
+          java -jar bin/plantuml.jar -tpng "docs/**/*.plantuml"
+
+      # ── 6. Commit and push generated PNGs ────────────────────────────────
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Add any puml-generated images
+          git add docs/**/*.png || true
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto-generate PlantUML diagrams [skip ci]"
+            git push
+          else
+            echo "No changes in diagrams to commit."
+          fi

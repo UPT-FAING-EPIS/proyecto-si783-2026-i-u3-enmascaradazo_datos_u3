@@ -1,0 +1,18 @@
+@startuml
+skinparam Shadowing false
+start
+:Usuario solicita Benchmark;
+:Frontend envía petición POST /api/v1/execute_test;
+:main.py obtiene la conexión activa;
+:DatabaseFactory instancia el motor de base de datos;
+:FastAPI inicia timer (t_inicio) y lee datos crudos;
+:masking_service aplica reglas de enmascaramiento en memoria;
+:t_mask es registrado por el servicio de métricas;
+:masking_service cifra valores sensibles (si aplica);
+:t_encrypt es registrado;
+:Calcular overhead total y deltatime;
+:Monitor Service registra métricas en base de datos SQLite;
+:API retorna JSON con datos y métricas al Frontend;
+:Frontend muestra tabla comparativa y gráficos;
+stop
+@enduml

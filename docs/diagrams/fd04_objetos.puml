@@ -1,0 +1,59 @@
+@startuml
+skinparam Shadowing false
+
+object "conn_postgres: Connection" as conn1 {
+  id = "conn-001"
+  name = "PostgreSQL Local"
+  database_type = DatabaseType.POSTGRES
+  host = "localhost"
+  port = 5432
+  database = "users_db"
+  username = "postgres"
+  is_active = true
+}
+
+object "rule_hashing: MaskingRule" as rule1 {
+  id = "rule-001"
+  connection_id = "conn-001"
+  target_table = "public.users"
+  target_column = "dni"
+  algorithm = MaskingAlgorithm.HASHING
+  protection_mode = ProtectionMode.STATIC_MASK
+  strategy_options = {"salt": "academic_secops"}
+}
+
+object "rule_redaction: MaskingRule" as rule2 {
+  id = "rule-002"
+  connection_id = "conn-001"
+  target_table = "public.users"
+  target_column = "email"
+  algorithm = MaskingAlgorithm.REDACTION
+  protection_mode = ProtectionMode.VIRTUAL_VIEW
+  strategy_options = {"mask_char": "*", "preserve_domain": true}
+}
+
+object "job_apply: MaskingJob" as job1 {
+  id = "job-001"
+  connection_id = "conn-001"
+  run_mode = MaskingRunMode.APPLY
+  status = "COMPLETED"
+  records_processed = 1250
+  artifacts_generated = ["public.users_masked_view", "public.users.email_masked"]
+  created_at = 2026-07-04T13:00:00
+}
+
+object "user_admin: User" as user1 {
+  id = "user-100"
+  full_name = "Eduardo Flores"
+  email = "admin@demo.com"
+  role = "admin"
+  provider = "local"
+}
+
+job1 ..> conn1 : "ejecutado sobre"
+rule1 ..> conn1 : "asociada a"
+rule2 ..> conn1 : "asociada a"
+job1 "1" *-- "*" rule1 : "ejecuta"
+job1 "1" *-- "*" rule2 : "ejecuta"
+user1 ..> job1 : "crea y monitorea"
+@enduml

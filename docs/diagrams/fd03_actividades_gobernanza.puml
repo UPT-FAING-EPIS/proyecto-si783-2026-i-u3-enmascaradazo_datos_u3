@@ -1,0 +1,16 @@
+@startuml
+skinparam Shadowing false
+start
+:Usuario solicita aplicar enmascarado permanente (APPLY);
+:Verificar que motor está soportado y habilitado;
+if (¿Motor Soportado?) then (no)
+  :Retornar Error 400;
+  stop
+else (sí)
+  :Crear copia de seguridad en Vault (_enmask_backup_...);
+  :Aplicar Fernet a valores sensibles (si aplica cifrado);
+  :Guardar metadatos en repositorio y aplicar actualización física;
+  :Retornar Estado {estado: "ACTIVA"} al Frontend;
+endif
+stop
+@enduml

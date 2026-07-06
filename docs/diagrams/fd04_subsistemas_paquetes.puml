@@ -1,0 +1,69 @@
+@startuml
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+skinparam PackageBorderColor #34495E
+skinparam PackageBackgroundColor #F2F4F4
+
+package "Capa de Presentación (React SPA)" {
+  [Pages (Dashboard, Connections, DataProtection, Jobs, Admin)] as Pages
+  [Services (api.ts HTTP Client)] as UISvc
+  Pages --> UISvc
+}
+
+package "Capa de API & Aplicación (FastAPI Backend)" {
+  package "API Routers" {
+    [auth.py] as R_Auth
+    [connections.py] as R_Conn
+    [rules.py] as R_Rules
+    [jobs.py] as R_Jobs
+    [workbench.py] as R_Workbench
+  }
+  package "Application Services" {
+    [AuthService] as Svc_Auth
+    [ConnectionService] as Svc_Conn
+    [JobOrchestrator] as Svc_Jobs
+    [MaskingService] as Svc_Masking
+    [WorkbenchService] as Svc_Workbench
+  }
+  UISvc --> R_Auth : HTTP REST (JSON)
+  UISvc --> R_Conn : HTTP REST (JSON)
+  UISvc --> R_Rules : HTTP REST (JSON)
+  UISvc --> R_Jobs : HTTP REST (JSON)
+  UISvc --> R_Workbench : HTTP REST (JSON)
+
+  R_Auth --> Svc_Auth
+  R_Conn --> Svc_Conn
+  R_Rules --> Svc_Jobs
+  R_Jobs --> Svc_Jobs
+  R_Workbench --> Svc_Workbench
+  Svc_Jobs --> Svc_Masking
+  Svc_Workbench --> Svc_Masking
+}
+
+package "Capa de Dominio" {
+  [Entities (User, Connection, Rule, Job, AuditLog)] as Entities
+  [Value Objects (DatabaseType, ProtectionMode, Algorithm)] as VOs
+  [Interfaces (Repository, MaskingStrategy)] as Interfaces
+  Svc_Auth --> Entities
+  Svc_Conn --> Entities
+  Svc_Jobs --> Entities
+  Svc_Masking --> Interfaces
+}
+
+package "Capa de Infraestructura" {
+  [DatabaseFactory & DB Clients\n(PostgreSQL, MySQL, SQLServer, SQLite,\nOracle, Cassandra, MongoDB, Redis, Neo4j)] as DB_Clients
+  [Masking Strategies\n(Hashing, Redaction, Substitution,\nNullification, Fpe, Perturbation)] as Mask_Strats
+  [Repositories (InMemory, MongoDB, Postgres)] as Repos
+  
+  Svc_Conn --> DB_Clients
+  Svc_Jobs --> DB_Clients
+  Svc_Workbench --> DB_Clients
+  Svc_Masking --> Mask_Strats
+  Svc_Auth --> Repos
+  Repos ..|> Interfaces
+  Mask_Strats ..|> Interfaces
+}
+
+database "Bases de Datos Externas" as Ext_DB
+DB_Clients --> Ext_DB : Native Connections
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+skinparam Shadowing false
+skinparam ArrowColor #047857
+skinparam ActivityBorderColor #065F46
+
+start
+:Usuario se autentica con Email/Contraseña o Google OAuth2;
+:Configurar credenciales y guardar conexión cifrada;
+:Inspeccionar esquema/colecciones/labels desde el Workbench;
+:Seleccionar campos sensibles y configurar reglas por columna/campo;
+:Previsualizar cambios de enmascaramiento al vuelo en la UI (en memoria);
+if (¿Modo de Ejecución del Job?) then (Dry-Run (Simulación))
+  :Ejecutar simulación de protección;
+  :Medir overhead de performance de las consultas;
+  :Generar reporte temporal para revisión;
+else (Apply (Aplicación física))
+  :Crear respaldo de valores originales en Vault seguro;
+  :Aplicar enmascaramiento (vistas, columnas o actualización estática) en BD destino;
+  :Registrar log de auditoría completo y emitir reporte de Job;
+endif
+:QA/Desarrollo utiliza la base de datos protegida;
+stop
+@enduml

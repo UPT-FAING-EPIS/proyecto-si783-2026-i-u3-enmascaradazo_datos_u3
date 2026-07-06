@@ -1,0 +1,38 @@
+@startuml
+skinparam Shadowing false
+skinparam ArrowColor #2563EB
+
+start
+:Seleccionar Conexión;
+note right
+  Objeto [conn: Connection]
+end note
+:Escanear Esquema;
+note right
+  Objeto [schema: SchemaDTO]
+end note
+:Configurar Reglas;
+note right
+  Objeto [rules: List<MaskingRule>]
+end note
+if (¿Modo Job?) then (Dry-Run)
+  :Generar Simulación;
+  note right
+    Objeto [preview: PreviewResult]
+  end note
+else (Apply)
+  :Crear Backup en Vault;
+  note right
+    Objeto [backup: VaultBackup]
+  end note
+  :Aplicar Enmascarado Permanente;
+  note right
+    Objeto [auditLog: AuditLog]
+  end note
+endif
+:Generar Reporte de Ejecución;
+note right
+  Objeto [report: MaskingReport]
+end note
+stop
+@enduml

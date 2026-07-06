@@ -1,0 +1,39 @@
+@startuml
+skinparam componentStyle uml2
+skinparam Shadowing false
+
+[React SPA Frontend] as FE
+[FastAPI Monolithic Backend] as BE
+
+package "Componentes Internos del Backend" {
+  [API Router Gateway] as Router
+  [Auth Service] as AuthSvc
+  [Connection Service] as ConnSvc
+  [Job Orchestrator] as JobOrch
+  [Masking Core Service] as MaskSvc
+  [Database Factory] as DBFactory
+  [Native DB Connectors] as DBConnectors
+  [Vault Backup System] as Vault
+}
+
+database "Metadata Repository\n(Memory / MongoDB / Postgres)" as MetaDB
+
+FE --> Router : HTTP REST / JSON
+Router --> AuthSvc
+Router --> ConnSvc
+Router --> JobOrch
+Router --> MaskSvc
+
+AuthSvc --> MetaDB : Persistencia de Usuarios y Sesiones
+ConnSvc --> MetaDB : Persistencia de Metadatos de Conexiones
+JobOrch --> MetaDB : Persistencia de Jobs y Auditoría
+
+JobOrch --> DBFactory : get_client()
+DBFactory --> DBConnectors : Instancia conectores
+JobOrch --> MaskSvc : mask_value()
+MaskSvc --> Vault : Almacena backups de originales
+
+database "External DB Targets\n(PostgreSQL, MySQL, SQLServer, SQLite,\nOracle, Cassandra, MongoDB, Redis, Neo4j)" as Targets
+
+DBConnectors --> Targets : Read / Write (TCP / Native Protocol)
+@enduml

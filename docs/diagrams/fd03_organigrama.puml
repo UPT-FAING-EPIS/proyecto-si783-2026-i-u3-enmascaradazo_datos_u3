@@ -1,0 +1,13 @@
+@startuml
+skinparam Shadowing false
+skinparam cardBackgroundColor #EFF6FF
+skinparam cardBorderColor #3B82F6
+card "Director de Proyecto\n(Eduardo Flores N.)" as Dir
+card "Backend Lead\n(M. Choqueña)" as BE
+card "Frontend Lead\n(E. Flores)" as FE
+card "QA / DevOps\n(E. Flores)" as QA
+
+Dir --> BE
+Dir --> FE
+Dir --> QA
+@enduml

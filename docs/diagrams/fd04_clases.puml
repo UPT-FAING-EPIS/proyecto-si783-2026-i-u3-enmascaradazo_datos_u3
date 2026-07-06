@@ -1,0 +1,72 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam Shadowing false
+
+abstract class BaseDeDatos {
+  # connection_uri: str
+  + {abstract} connect()
+  + {abstract} test_connection(): bool
+  + {abstract} get_schema(): dict
+  + {abstract} fetch_records(table: str, limit: int): list
+  + {abstract} apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class PostgresClient extends BaseDeDatos {
+  + connect()
+  + test_connection(): bool
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class MongoClient extends BaseDeDatos {
+  + connect()
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class Neo4jClient extends BaseDeDatos {
+  + connect()
+  + get_schema(): dict
+  + fetch_records(table: str, limit: int): list
+  + apply_masking(table: str, rules: list, mode: str): dict
+}
+
+class DatabaseFactory {
+  + {static} get_client(conn: Connection): BaseDeDatos
+}
+
+class MaskingService {
+  - strategies: dict
+  + mask_value(val: any, strat: str, mode: str, opts: dict): any
+}
+
+interface MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class HashingStrategy implements MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class RedactionStrategy implements MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class SubstitutionStrategy implements MaskingStrategy {
+  + mask(val: any, opts: dict): any
+}
+
+class JobOrchestrator {
+  - conn_service: ConnectionService
+  - masking_service: MaskingService
+  + create_and_execute_job(conn_id: str, mode: str, rules: list): JobResult
+  + rollback_job(job_id: str): dict
+}
+
+DatabaseFactory ..> BaseDeDatos : "instancia"
+JobOrchestrator --> DatabaseFactory : "usa"
+JobOrchestrator --> MaskingService : "delega en"
+MaskingService "1" *-- "*" MaskingStrategy : "contiene"
+@enduml

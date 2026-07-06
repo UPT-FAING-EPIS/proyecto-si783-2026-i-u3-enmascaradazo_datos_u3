@@ -1,0 +1,35 @@
+@startuml
+skinparam Shadowing false
+object "Settings (config.py)" as settings {
+  APP_NAME = "Enmask"
+  DATA_DIR = "./data"
+  PG_HOST = "localhost"
+}
+object "DatabaseFactory" as factory {
+  + obtener_motor(conn_id)
+}
+object "BaseDeDatos (Abstract)" as db {
+  + conectar()
+  + obtener_esquema()
+  + ejecutar_consulta()
+}
+object "Masking Engine (masking.py)" as engine {
+  + aplicar_enmascaramiento()
+  + cifrar_valor()
+  + descifrar_valor()
+}
+object "Monitor Service (monitor_service.py)" as monitor {
+  + registrar_metrica()
+  + obtener_metricas()
+  + registrar_error()
+}
+object "Auth Module (auth.py)" as auth {
+  SESIONES_ACTIVAS = {}
+  + crear_token()
+  + obtener_sesion()
+}
+
+factory ..> db : creates
+engine ..> db : processes data from
+monitor ..> db : monitors
+@enduml

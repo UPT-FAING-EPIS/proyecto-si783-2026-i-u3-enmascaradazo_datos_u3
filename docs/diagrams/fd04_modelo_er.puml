@@ -1,0 +1,74 @@
+@startuml
+skinparam linetype ortho
+skinparam Shadowing false
+
+entity "User" as user {
+  * id : UUID <<PK>>
+  --
+  * full_name : str
+  * email : str <<UNIQUE>>
+  * password_hash : str
+  * role : str (admin / user)
+  * provider : str (local / google)
+  * created_at : datetime
+}
+
+entity "Connection" as conn {
+  * id : UUID <<PK>>
+  --
+  * name : str
+  * database_type : DatabaseType <<Enum>>
+  * host : str
+  * port : int
+  * database : str
+  * username : str
+  * password_encrypted : str
+  * is_active : bool
+  * created_by : UUID <<FK>>
+  * created_at : datetime
+}
+
+entity "MaskingRule" as rule {
+  * id : UUID <<PK>>
+  --
+  * connection_id : UUID <<FK>>
+  * target_table : str
+  * target_column : str
+  * algorithm : MaskingAlgorithm <<Enum>>
+  * protection_mode : ProtectionMode <<Enum>>
+  * strategy_options : json
+  * created_at : datetime
+}
+
+entity "MaskingJob" as job {
+  * id : UUID <<PK>>
+  --
+  * connection_id : UUID <<FK>>
+  * run_mode : MaskingRunMode <<Enum>>
+  * status : JobStatus <<Enum>>
+  * records_processed : int
+  * artifacts_generated : json (views, columns, backups)
+  * execution_time_ms : float
+  * error_message : str
+  * created_by : UUID <<FK>>
+  * created_at : datetime
+}
+
+entity "AuditLog" as audit {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * action : str
+  * entity_type : str
+  * entity_id : UUID
+  * details : json
+  * ip_address : str
+  * timestamp : datetime
+}
+
+user "1" --o{ conn : "registra"
+conn "1" --o{ rule : "tiene"
+conn "1" --o{ job : "ejecuta en"
+user "1" --o{ job : "inicia"
+user "1" --o{ audit : "genera"
+@enduml

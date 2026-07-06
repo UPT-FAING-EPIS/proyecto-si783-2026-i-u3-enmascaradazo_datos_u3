@@ -1,0 +1,33 @@
+@startuml
+left to right direction
+skinparam roundcorner 8
+skinparam Shadowing false
+skinparam ArrowColor #2563EB
+
+actor "Usuario QA / Dev / DBA" as User
+actor "Administrador de Seguridad" as Admin
+
+rectangle "Enmask v2.0" {
+  usecase "CU-001: Autenticar (OAuth2 / Local)" as UC1
+  usecase "CU-002: Gestionar Conexiones DB" as UC2
+  usecase "CU-003: Inspeccionar Esquema (Workbench)" as UC3
+  usecase "CU-004: Configurar Reglas de Enmascarado" as UC4
+  usecase "CU-005: Previsualizar Enmascarado (Preview)" as UC5
+  usecase "CU-006: Ejecutar Job (Dry-run / Apply)" as UC6
+  usecase "CU-007: Auditar Reportes e Historial" as UC7
+  usecase "CU-008: Restaurar Datos Originales (Vault)" as UC8
+  usecase "CU-009: Administrar Usuarios y Roles" as UC9
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+
+Admin --|> User
+Admin --> UC9
+@enduml

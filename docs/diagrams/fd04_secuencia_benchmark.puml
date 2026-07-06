@@ -1,0 +1,76 @@
+@startuml
+autonumber
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+
+actor "Usuario QA" as User
+participant "React Frontend\n(DataProtection.tsx / Jobs.tsx)" as FE
+participant "Jobs Router\n(jobs.py)" as R_Jobs
+participant "JobOrchestrator\n(job_orchestrator.py)" as S_Jobs
+participant "DatabaseFactory\n(factory.py)" as Factory
+participant "DBClient\n(PostgresClient, etc.)" as Client
+database "Target Database" as TargetDB
+participant "MaskingService\n(masking_service.py)" as S_Masking
+participant "MaskingStrategy\n(strategies.py)" as Strat
+database "Vault Repository\n(vault_repository.py)" as Vault
+
+User -> FE : Configura reglas y ejecuta Job (Modo: Apply / Dry-run)
+FE -> R_Jobs : POST /api/v1/jobs/\n{connection_id, run_mode, rules}
+activate R_Jobs
+R_Jobs -> S_Jobs : create_and_execute_job(conn_id, run_mode, rules)
+activate S_Jobs
+S_Jobs -> S_Jobs : Registrar Job (Estado: PENDING)
+
+
+S_Jobs -> Factory : get_client(connection_entity)
+activate Factory
+Factory -> Client : Instanciar cliente específico
+Factory --> S_Jobs : Retorna DBClient
+deactivate Factory
+
+S_Jobs -> Client : connect()
+S_Jobs -> Client : fetch_records(table, limit)
+activate Client
+Client -> TargetDB : Ejecuta query de extracción
+TargetDB --> Client : Retorna registros crudos
+Client --> S_Jobs : Retorna registros
+deactivate Client
+
+loop Para cada registro
+  loop Para cada regla por campo
+    S_Jobs -> S_Masking : mask_value(value, strategy, protection_mode)
+    activate S_Masking
+    S_Masking -> Strat : mask(value, options)
+    activate Strat
+    Strat --> S_Masking : Retorna valor enmascarado
+    deactivate Strat
+    
+    alt run_mode == APPLY
+      alt protection_mode == static_mask o symmetric_encryption
+        S_Masking -> Vault : store_original_value(job_id, table, col, original_val)
+      end
+    end
+    S_Masking --> S_Jobs : Retorna valor final protegido
+    deactivate S_Masking
+  end
+end
+
+alt run_mode == APPLY
+  S_Jobs -> Client : apply_masking_changes(table, protection_mode, protected_records)
+  activate Client
+  Client -> TargetDB : Crear vistas / agregar columnas / actualizar registros físicos
+  TargetDB --> Client : Confirmación
+  Client --> S_Jobs : Éxito
+  deactivate Client
+  S_Jobs -> S_Jobs : Actualizar Job (Estado: COMPLETED)
+else run_mode == DRY_RUN
+  S_Jobs -> S_Jobs : Guardar muestra en logs de Job (sin modificar base de datos)
+  S_Jobs -> S_Jobs : Actualizar Job (Estado: COMPLETED)
+end
+
+S_Jobs --> R_Jobs : Retorna resultado de ejecución
+deactivate S_Jobs
+R_Jobs --> FE : HTTP 200 {job_id, status, records_processed, artifacts_generated}
+deactivate R_Jobs
+FE --> User : Mostrar resumen y métricas de rendimiento del Job
+@enduml

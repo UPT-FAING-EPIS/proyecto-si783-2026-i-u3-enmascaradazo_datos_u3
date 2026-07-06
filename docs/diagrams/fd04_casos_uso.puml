@@ -1,0 +1,47 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam roundcorner 8
+skinparam Shadowing false
+skinparam ArrowColor #2C3E50
+skinparam ActorBorderColor #2C3E50
+skinparam UsecaseBorderColor #2C3E50
+skinparam UsecaseBackgroundColor #ECF0F1
+
+actor "Usuario QA / Dev" as User
+actor "Administrador" as Admin
+
+rectangle "Sistema Enmask v2.0" {
+  usecase "CU-001: Registrarse" as UC1
+  usecase "CU-002: Iniciar Sesión\n(Local / Google OAuth)" as UC2
+  usecase "CU-003: Registrar y Probar Conexión" as UC3
+  usecase "CU-004: Inspeccionar Esquema (Workbench)" as UC4
+  usecase "CU-005: Previsualizar Enmascaramiento" as UC5
+  usecase "CU-006: Definir Regla por Campo" as UC6
+  usecase "CU-007: Crear y Ejecutar Job\n(Dry-run / Apply)" as UC7
+  usecase "CU-008: Restaurar/Desencriptar Datos" as UC8
+  usecase "CU-009: Auditar Historial de Jobs" as UC9
+  usecase "CU-010: Gestionar Usuarios y Roles" as UC10
+}
+
+actor "Google OAuth" as Google
+actor "Bases de Datos Destino\n(Relacionales, NoSQL, Grafos)" as DB
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+User --> UC9
+
+Admin --|> User
+Admin --> UC10
+
+UC2 -- Google
+UC3 -- DB
+UC7 -- DB
+UC8 -- DB
+@enduml

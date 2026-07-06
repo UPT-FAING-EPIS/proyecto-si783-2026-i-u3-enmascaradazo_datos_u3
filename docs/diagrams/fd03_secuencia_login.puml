@@ -1,0 +1,46 @@
+@startuml
+autonumber
+skinparam Shadowing false
+
+actor Usuario
+participant "React Frontend (UI)" as FE
+participant "FastAPI API Router (auth)" as API
+participant "AuthService" as Service
+participant "UserRepository (Mongo/SQL)" as Repo
+database "Metadata Store" as DB
+
+Usuario -> FE : Ingresa email y contraseña
+FE -> API : POST /api/v1/auth/login\n(email, password)
+activate API
+API -> Service : authenticate_user(email, password)
+activate Service
+Service -> Repo : find_by_email(email)
+activate Repo
+Repo -> DB : Query user data
+DB --> Repo : Raw User document
+Repo --> Service : User entity or None
+deactivate Repo
+alt User exists
+  Service -> Service : verify_password(password, hashed_password)\n[Bcrypt]
+  alt password matches
+    Service --> API : User entity
+  else password mismatch
+    Service --> API : raise InvalidCredentialsException
+  end
+else User does not exist
+  Service --> API : raise UserNotFoundException
+end
+deactivate Service
+
+alt authentication successful
+  API -> Service : create_access_token(user_id, role)
+  activate Service
+  Service --> API : JWT Access Token
+  deactivate Service
+  API --> FE : HTTP 200 {access_token, token_type, user}
+else authentication failed
+  API --> FE : HTTP 401 Unauthorized / HTTP 404 Not Found
+end
+deactivate API
+FE --> Usuario : Redirige al Dashboard y muestra sesión activa
+@enduml

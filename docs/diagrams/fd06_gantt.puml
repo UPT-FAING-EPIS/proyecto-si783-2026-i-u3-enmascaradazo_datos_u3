@@ -1,0 +1,15 @@
+@startgantt
+printscale daily
+[Análisis y Diseño] lasts 14 days
+[Core Enmascarado] lasts 20 days
+[Drivers DB] lasts 15 days
+[Dashboard UI] lasts 15 days
+[Testing y QA] lasts 10 days
+[Despliegue Producción] lasts 7 days
+
+[Core Enmascarado] starts at [Análisis y Diseño]'s end
+[Drivers DB] starts at [Core Enmascarado]'s end
+[Dashboard UI] starts at [Drivers DB]'s end
+[Testing y QA] starts at [Dashboard UI]'s end
+[Despliegue Producción] starts at [Testing y QA]'s end
+@endgantt

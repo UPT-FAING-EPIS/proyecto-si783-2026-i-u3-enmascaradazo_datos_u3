@@ -1,0 +1,30 @@
+@startuml
+skinparam roundcorner 8
+skinparam Shadowing false
+skinparam ArrowColor #2563EB
+skinparam ActorBorderColor #1E3A8A
+
+actor Usuario as "Usuario (QA / Dev / DBA)"
+
+database "BD Producción (Origen)" as DB_Prod {
+  [Datos Sensibles (PII)] as PII
+}
+
+node "Plataforma Enmask" as Enmask {
+  [Interfaz Web (React SPA)] as UI
+  [Backend Core (FastAPI)] as Backend
+  [Motor de Enmascarado] as Engine
+  database "Metadata Store (PG/Mongo)" as MetaDB
+}
+
+database "BD Desarrollo / QA (Destino)" as DB_Dest {
+  [Datos Enmascarados] as MaskedData
+}
+
+Usuario --> UI : Configura conexiones y reglas
+UI --> Backend : Envía peticiones REST API
+Backend --> MetaDB : Almacena configuración y logs
+Backend --> Engine : Orquesta la tarea (Job)
+Engine --> DB_Prod : Lee datos originales
+Engine --> DB_Dest : Aplica y escribe datos ofuscados
+@enduml

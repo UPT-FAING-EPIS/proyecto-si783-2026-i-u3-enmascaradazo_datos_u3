@@ -1,0 +1,4 @@
+interface:
+  display_name: "Enmask Connection Diagnostician"
+  short_description: "Diagnose Enmask engine and cloud URI connection errors."
+  brand_color: "#7C3AED"

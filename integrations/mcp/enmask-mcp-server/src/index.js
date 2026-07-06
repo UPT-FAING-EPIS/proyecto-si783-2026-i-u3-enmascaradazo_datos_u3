@@ -236,36 +236,24 @@ async function handleMessage(message) {
 function writeMessage(message) {
   if (!message) return;
   const body = JSON.stringify(message);
-  process.stdout.write(`Content-Length: ${Buffer.byteLength(body, 'utf8')}\r\n\r\n${body}`);
+  process.stdout.write(body + '\n');
 }
 
-let buffer = Buffer.alloc(0);
+let buffer = '';
 function tryReadMessages() {
-  while (true) {
-    const headerEnd = buffer.indexOf('\r\n\r\n');
-    if (headerEnd === -1) return;
-    const header = buffer.slice(0, headerEnd).toString('utf8');
-    const match = /Content-Length:\s*(\d+)/i.exec(header);
-    if (!match) {
-      buffer = buffer.slice(headerEnd + 4);
-      continue;
-    }
-    const length = Number(match[1]);
-    const bodyStart = headerEnd + 4;
-    const bodyEnd = bodyStart + length;
-    if (buffer.length < bodyEnd) return;
-    const body = buffer.slice(bodyStart, bodyEnd).toString('utf8');
-    buffer = buffer.slice(bodyEnd);
-    let message;
+  let lineEnd;
+  while ((lineEnd = buffer.indexOf('\n')) !== -1) {
+    const line = buffer.slice(0, lineEnd).trim();
+    buffer = buffer.slice(lineEnd + 1);
+    if (!line) continue;
     try {
-      message = JSON.parse(body);
+      const message = JSON.parse(line);
+      handleMessage(message).then(writeMessage).catch(error => {
+        writeMessage({ jsonrpc: '2.0', id: message.id, error: { code: -32000, message: error.message } });
+      });
     } catch (error) {
-      logError(`JSON inválido: ${error.message}`);
-      continue;
+      logError(`JSON inválido: ${error.message} - Línea: ${line}`);
     }
-    handleMessage(message).then(writeMessage).catch(error => {
-      writeMessage({ jsonrpc: '2.0', id: message.id, error: { code: -32000, message: error.message } });
-    });
   }
 }
 
@@ -275,7 +263,7 @@ if (process.argv.includes('--smoke')) {
 }
 
 process.stdin.on('data', chunk => {
-  buffer = Buffer.concat([buffer, chunk]);
+  buffer += chunk.toString('utf8');
   tryReadMessages();
 });
 

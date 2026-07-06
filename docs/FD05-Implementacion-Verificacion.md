@@ -371,37 +371,35 @@ Todos los riesgos identificados (técnicos, de seguridad, operativos y de rendim
 
 #### Estructura del Proyecto
 
-```
-enmask-v2.0/
-├── main.py                    # API Gateway (FastAPI)
-├── config.py                  # Configuración centralizada (Pydantic)
-├── auth.py                    # Gestión de sesiones y tokens
-├── db_usuarios.py             # CRUD de usuarios (SQLite)
-├── oauth_google.py            # Google OAuth2
-├── database_manager.py        # Factory Pattern (8 motores)
-├── database_health.py         # Health checks de BD
-├── masking.py                 # Motor de enmascaramiento (4 algoritmos)
-├── masking_service.py         # Masking Service (FastAPI :8001)
-├── encryption_service.py      # Servicio de cifrado Fernet
-├── key_manager.py             # Gestión de clave Fernet
-├── governance.py              # Gobernanza SDM
-├── monitor_service.py         # Monitor Service (FastAPI :8002)
-├── monitor.py                 # Cálculo de overhead
-├── health_monitor.py          # Orquestador de salud
-├── system_metrics.py          # Métricas de sistema (psutil)
-├── service_checker.py         # Health checks HTTP
-├── seeder.py                  # Datos de prueba
-├── requirements.txt           # Dependencias Python
-├── Dockerfile                 # Imagen Docker
-├── docker-compose.yml         # Orquestación de contenedores
-├── render.yaml                # Blueprint para Render
-├── static/
-│   ├── login.html             # Página de autenticación
-│   └── index.html             # Dashboard principal
-└── scripts/
-    ├── render-start.sh        # Script de inicio para Render
-    └── generate_frontend.py   # Generador de frontend
-```
+- **enmask-v2.0/**
+  - `main.py`: API Gateway (FastAPI)
+  - `config.py`: Configuración centralizada (Pydantic)
+  - `auth.py`: Gestión de sesiones y tokens
+  - `db_usuarios.py`: CRUD de usuarios (SQLite)
+  - `oauth_google.py`: Google OAuth2
+  - `database_manager.py`: Factory Pattern (8 motores)
+  - `database_health.py`: Health checks de BD
+  - `masking.py`: Motor de enmascaramiento (4 algoritmos)
+  - `masking_service.py`: Masking Service (FastAPI :8001)
+  - `encryption_service.py`: Servicio de cifrado Fernet
+  - `key_manager.py`: Gestión de clave Fernet
+  - `governance.py`: Gobernanza SDM
+  - `monitor_service.py`: Monitor Service (FastAPI :8002)
+  - `monitor.py`: Cálculo de overhead
+  - `health_monitor.py`: Orquestador de salud
+  - `system_metrics.py`: Métricas de sistema (psutil)
+  - `service_checker.py`: Health checks HTTP
+  - `seeder.py`: Datos de prueba
+  - `requirements.txt`: Dependencias Python
+  - `Dockerfile`: Imagen Docker
+  - `docker-compose.yml`: Orquestación de contenedores
+  - `render.yaml`: Blueprint para Render
+  - **static/**:
+    - `login.html`: Página de autenticación
+    - `index.html`: Dashboard principal
+  - **scripts/**:
+    - `render-start.sh`: Script de inicio para Render
+    - `generate_frontend.py`: Generador de frontend
 
 #### Patrones de Diseño Implementados
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Enmask Data Protection Advisor"
+  short_description: "Recommend and document Enmask masking rules."
+  brand_color: "#2563EB"

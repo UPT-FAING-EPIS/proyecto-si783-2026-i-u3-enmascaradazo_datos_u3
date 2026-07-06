@@ -1,0 +1,38 @@
+@startuml
+skinparam Shadowing false
+skinparam ArrowColor #B91C1C
+skinparam ActivityBorderColor #991B1B
+
+start
+:Solicitud de copia de datos de producción;
+:DBA ejecuta pg_dump / mysqldump / mongodump;
+note right
+  Consume recursos del
+  servidor productivo
+end note
+:Transferir archivos de volcado por red interna;
+note right
+  Archivos sin cifrar, vulnerables
+  a interceptación
+end note
+:Restaurar base de datos en entorno de destino;
+:Ejecutar scripts manuales de ofuscación (Python/Bash);
+note right
+  Frágiles, inconsistentes,
+  sin documentación
+end note
+if (¿Errores durante la ofuscación?) then (sí)
+  :Esquema roto o relaciones de referencias rotas;
+  :Se corrigen scripts manualmente y se vuelve a correr;
+else (no)
+  :Datos parcialmente protegidos en QA/Dev;
+endif
+note left
+  PROBLEMAS:
+  - Sin auditoría ni trazabilidad
+  - Campos anidados omitidos
+  - Alto riesgo de exposición de PII
+  - Incumplimiento GDPR / Ley 29733
+end note
+stop
+@enduml

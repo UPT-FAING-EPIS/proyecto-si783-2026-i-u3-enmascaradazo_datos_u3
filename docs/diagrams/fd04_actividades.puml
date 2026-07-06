@@ -1,0 +1,44 @@
+@startuml
+skinparam Shadowing false
+
+node "Dispositivo Cliente" as ClientNode {
+  node "Navegador Web" as Browser {
+    artifact "React + Vite SPA\n(HTML5, Tailwind, TS)" as FE_App
+  }
+}
+
+node "Servidor Local / Nube (Docker Host)" as ServerNode {
+  node "Contenedor: enmask-backend" as BackendCont {
+    artifact "FastAPI App\n(Uvicorn)" as BE_App
+  }
+
+  node "Contenedor: metadata-db" as MetaCont {
+    database "MongoDB / PostgreSQL\n(Persistencia de metadatos)" as MetaDB
+  }
+  
+  BE_App --> MetaDB : TCP :27017 / :5432
+}
+
+node "Red Corporativa / Proveedores Cloud" as CloudDBs {
+  database "PostgreSQL (:5432)" as PG
+  database "MySQL / MariaDB (:3306)" as MY
+  database "SQL Server (:1433)" as MS
+  database "MongoDB (:27017)" as MO
+  database "Redis (:6379)" as RE
+  database "Neo4j (:7687)" as NE
+  database "Cassandra (:9042)" as CA
+  database "Oracle (:1521)" as OR
+  database "SQLite (local file)" as SQ
+}
+
+FE_App --> BE_App : HTTPS / REST (:8000)
+BE_App --> PG : asyncpg
+BE_App --> MY : aiomysql
+BE_App --> MS : pymssql
+BE_App --> MO : motor / pymongo
+BE_App --> RE : redis-py
+BE_App --> NE : neo4j-driver
+BE_App --> CA : cassandra-driver
+BE_App --> OR : python-oracledb
+BE_App --> SQ : sqlite3 (local)
+@enduml

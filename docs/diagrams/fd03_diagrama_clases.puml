@@ -1,0 +1,118 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam Shadowing false
+skinparam linetype ortho
+
+package "Domain Layer" {
+  class User {
+    + id: UUID
+    + full_name: str
+    + email: str
+    + password_hash: str
+    + role: str
+  }
+
+  class Connection {
+    + id: UUID
+    + name: str
+    + database_type: DatabaseType
+    + host: str
+    + port: int
+    + username: str
+    + password_hash: str
+    + extra_params: dict
+  }
+
+  class MaskingJob {
+    + id: UUID
+    + connection_id: UUID
+    + run_mode: MaskingRunMode
+    + status: JobStatus
+    + created_at: datetime
+    + finished_at: datetime
+    + total_records: int
+    + processed_records: int
+    + error_message: str
+  }
+
+  class MaskingRule {
+    + id: UUID
+    + connection_id: UUID
+    + target_table: str
+    + target_column: str
+    + algorithm: MaskingAlgorithm
+    + protection_mode: ProtectionMode
+    + strategy_options: dict
+  }
+
+  enum DatabaseType {
+    POSTGRESQL
+    MYSQL
+    SQLSERVER
+    MONGODB
+    REDIS
+    CASSANDRA
+    NEO4J
+    ORACLE
+    SQLITE
+  }
+
+  interface MaskingStrategy {
+    + mask(value: Any, options: dict): Any
+  }
+  
+  Connection --> DatabaseType
+}
+
+package "Application Layer" {
+  class JobOrchestrator {
+    - conn_repo: ConnectionRepository
+    - job_repo: JobRepository
+    - db_factory: DatabaseFactory
+    - masking_svc: MaskingService
+    + create_and_execute_job(conn_id: str, mode: str, rules: list): MaskingJob
+  }
+
+  class MaskingService {
+    - vault_repo: VaultRepository
+    + apply_protection(records: list, rules: list): list
+    + restore_protection(records: list, rules: list): list
+  }
+  
+  JobOrchestrator --> MaskingService
+}
+
+package "Infrastructure Layer" {
+  interface BaseDatabaseClient {
+    + connect()
+    + get_schema(): dict
+    + fetch_records(table: str, limit: int): list
+    + execute_job(rules: list, mode: str): dict
+  }
+
+  class DatabaseFactory {
+    + {static} get_client(conn: Connection): BaseDatabaseClient
+  }
+
+  class PostgresClient implements BaseDatabaseClient
+  class MongoClient implements BaseDatabaseClient
+  class Neo4jClient implements BaseDatabaseClient
+  class SqlServerClient implements BaseDatabaseClient
+  class RedisClient implements BaseDatabaseClient
+  class CassandraClient implements BaseDatabaseClient
+
+  class RedactionStrategy implements MaskingStrategy
+  class HashingStrategy implements MaskingStrategy
+  class SubstitutionStrategy implements MaskingStrategy
+  class NullificationStrategy implements MaskingStrategy
+
+  class VaultRepositoryImpl {
+    + backup_original_data(job_id: str, data: dict)
+    + retrieve_original_data(job_id: str): dict
+  }
+}
+
+JobOrchestrator --> DatabaseFactory
+DatabaseFactory ..> BaseDatabaseClient : instantiates
+MaskingService --> MaskingStrategy : resolves
+@enduml
