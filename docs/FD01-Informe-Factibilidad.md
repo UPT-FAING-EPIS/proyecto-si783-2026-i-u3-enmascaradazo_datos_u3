@@ -11,7 +11,7 @@
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 |---|---|---|---|---|---|
 | 1.0 | EFN | MAC | — | Junio 2026 | Versión Original |
-| 2.0 | EFN | MAC | — | Julio 2026 | Ampliación exhaustiva académica para proyecto universitario (1000+ líneas) |
+| 2.0 | EFN | MAC | — | Julio 2026 |  |
 
 ---
 
