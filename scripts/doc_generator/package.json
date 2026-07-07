@@ -1,0 +1,9 @@
+{
+  "name": "enmask-docx-generator",
+  "version": "1.0.0",
+  "description": "Generador del diccionario de datos de Enmask en DOCX",
+  "main": "generate_docx.js",
+  "dependencies": {
+    "docx": "^8.5.0"
+  }
+}
