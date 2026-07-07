@@ -1,0 +1,6 @@
+Proyecto: ENMASCARADO DE DATOS.
+
+EDUARDO GINO FLORES NAVARRO
+MAURICIO ARIAN CHOQUEÑA CHOQUE
+
+https://drive.google.com/file/d/1Y1BcVQgjJSJjMTsTJszOIF9ZEDyQMIFk/view?usp=sharing
